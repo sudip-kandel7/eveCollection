@@ -1,7 +1,11 @@
 package main
 
-import "net/http"
+import (
+	"net/http"
 
-func (app *Application) home(res http.ResponseWriter, req *http.Request) {
-	res.Write([]byte("rolex World"))
+	"github.com/sudip-kandel7/eveCollection/views"
+)
+
+func (app *Application) home(w http.ResponseWriter, r *http.Request) {
+	views.IndexRenderer().Render(r.Context(),w)
 }

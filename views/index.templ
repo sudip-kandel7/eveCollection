@@ -1,0 +1,19 @@
+package views
+
+import "github.com/sudip-kandel7/eveCollection/views/components"
+
+templ index() {
+	<div>
+		hello chut
+	</div>
+}
+
+templ IndexRenderer() {
+	<html>
+	@components.Head("index"){
+		<meta name="description" content="My page">
+	}
+	@index()
+
+	</html>
+}
