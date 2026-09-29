@@ -1,0 +1,89 @@
+package views
+
+import "github.com/sudip-kandel7/eveCollection/views/components"
+
+type AdminLoginFormData struct {
+	Identifier string
+	ErrorMsg   string
+}
+
+templ adminLogin(form AdminLoginFormData) {
+	<div class="flex min-h-screen items-center justify-center bg-[#151914] px-6">
+		<div class="w-full max-w-sm rounded-2xl border border-white/10 bg-[#20251E] p-8">
+			<h1 class="text-lg font-semibold text-[#F5F7F1]">
+				Admin sign in
+			</h1>
+
+			if form.ErrorMsg != "" {
+				<div class="mt-4 rounded-lg border border-red-900/40 bg-red-950/30 px-3 py-2">
+					<p class="text-sm text-red-400">{ form.ErrorMsg }</p>
+				</div>
+			}
+
+			<form class="mt-6 space-y-4" method="POST" action="/admin/login">
+				<div>
+					<label for="identifier" class="mb-1.5 block text-xs font-medium text-[#B6BCB1]">
+						Identifier
+					</label>
+					<input
+						id="identifier"
+						name="identifier"
+						type="text"
+						value={ form.Identifier }
+						class="w-full rounded-lg border border-white/10 bg-[#171C16] px-3 py-2 text-sm text-[#F5F7F1] outline-none transition focus:border-[#E6FF75]/60"
+					/>
+				</div>
+
+				<div data-signals:showPassword="false">
+					<label for="password" class="mb-1.5 block text-xs font-medium text-[#B6BCB1]">
+						Password
+					</label>
+					<div class="relative">
+						<input
+							id="password"
+							name="password"
+							data-attr:type="$showPassword ? 'text' : 'password'"
+							autocomplete="off"
+							class="w-full rounded-lg border border-white/10 bg-[#171C16] px-3 py-2 pr-10 text-sm text-[#F5F7F1] outline-none transition focus:border-[#E6FF75]/60"
+						/>
+						<button
+														type="button"
+														aria-label="Toggle password visibility"
+														data-on:click="$showPassword = !$showPassword"
+														class="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-[#63685F] hover:text-[#20231F]"
+													>
+														<img
+															src="/static/public/invisible.png"
+															data-show="$showPassword"
+															alt="Hide password"
+															class="h-7 w-7 opacity-70 invert"
+														/>
+														<img
+															src="/static/public/visible.png"
+															data-show="!$showPassword"
+															alt="Show password"
+															class="h-7 w-7 opacity-70 invert"
+														/>
+													</button>
+					</div>
+				</div>
+
+				<button
+					type="submit"
+					class="w-full rounded-lg bg-[#E6FF75] px-4 py-2.5 text-sm font-semibold text-[#151914] transition hover:bg-[#d8f065]"
+				>
+					Sign in
+				</button>
+			</form>
+		</div>
+	</div>
+}
+
+templ AdminLoginRenderer(form AdminLoginFormData) {
+	<html>
+		@components.Head("Admin")
+		<body class="bg-[#151914]">
+			@adminLogin(form)
+		</body>
+	</html>
+}

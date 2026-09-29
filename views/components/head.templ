@@ -3,6 +3,8 @@ package components
 templ Head(title string) {
 	<head>
 		<title>{ title }</title>
-		{ children... }
+		<link rel="icon" type="image/svg" href="/static/public/pic.svg"/>
+		<link rel="stylesheet" href="/static/style.css">
+		<script type="module" src="/static/datastar.js" defer></script>
 	</head>
 }

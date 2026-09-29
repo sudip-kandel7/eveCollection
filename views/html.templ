@@ -1,0 +1,16 @@
+package views
+
+import "github.com/sudip-kandel7/eveCollection/views/components"
+import "github.com/sudip-kandel7/eveCollection/internal/db"
+
+templ Html(title string, user *db.User) {
+	<html>
+		@components.Head(title)
+		<body class="bg-[#F7F8F5]">
+			@components.Nav(user)
+			<main id="main">
+				{ children... }
+			</main>
+		</body>
+	</html>
+}

@@ -1,0 +1,24 @@
+package components
+
+templ UpdateErrors(errs map[string]string) {
+	<div id="err-name">
+		if msg, ok := errs["name"]; ok {
+			<p class="mt-1 text-sm text-red-600">{ msg }</p>
+		}
+	</div>
+	<div id="err-phone">
+		if msg, ok := errs["phone"]; ok {
+			<p class="mt-1 text-sm text-red-600">{ msg }</p>
+		}
+	</div>
+	<div id="err-email">
+			if msg, ok := errs["email"]; ok {
+				<p class="mt-1 text-sm text-red-600">{ msg }</p>
+			}
+	</div>
+	<div id="err-address">
+			if msg, ok := errs["address"]; ok {
+				<p class="mt-1 text-sm text-red-600">{ msg }</p>
+			}
+	</div>
+}	

@@ -1,0 +1,43 @@
+package components
+
+templ RegisterErrors(errs map[string]string, nonField []string) {
+	<div id="err-name">
+		if msg, ok := errs["name"]; ok {
+			<p class="mt-1 text-sm text-red-600">{ msg }</p>
+		}
+	</div>
+	<div id="err-phone">
+			if msg, ok := errs["phone"]; ok {
+				<p class="mt-1 text-sm text-red-600">{ msg }</p>
+			}
+		</div>
+		<div id="err-email">
+				if msg, ok := errs["email"]; ok {
+					<p class="mt-1 text-sm text-red-600">{ msg }</p>
+				}
+		</div>
+		<div id="err-address">
+			if msg, ok := errs["address"]; ok {
+				<p class="mt-1 text-sm text-red-600">{ msg }</p>
+			}
+		</div>
+	<div id="err-password">
+		if msg, ok := errs["password"]; ok {
+			<p class="mt-1 text-sm text-red-600">{ msg }</p>
+		}
+	</div>
+	<div id="err-confirmPassword">
+			if msg, ok := errs["confirm_password"]; ok {
+				<p class="mt-1 text-sm text-red-600">{ msg }</p>
+			}
+		</div>
+	<div id="err-nonfield">
+		if len(nonField) > 0 {
+			<div class="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+				for _, msg := range nonField {
+					<p class="text-sm text-red-600">{ msg }</p>
+				}
+			</div>
+		}
+	</div>
+}	

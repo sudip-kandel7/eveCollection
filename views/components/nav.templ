@@ -1,0 +1,132 @@
+package components
+
+import (
+	"github.com/sudip-kandel7/eveCollection/internal/db"
+)
+
+templ Nav(user *db.User) {
+	<nav class="w-full border-b border-[#E7E5DE] bg-[#FFFFFF]">
+		<div class="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+
+			<div class="flex items-center gap-2.5">
+				<a href="/" class="flex items-center gap-2.5">
+						<img src="/static/public/pic.svg" alt="" class="h-9 w-9 rounded-full">
+					
+
+					<span class="text-lg font-semibold text-[#20231F]">
+						eve
+						<span class="relative -top-1  text-xs text-[#638154]">
+							|Collection
+						</span>
+					</span>
+				</a>
+			</div>
+
+			<div class="hidden items-center gap-7 md:flex">
+				<a href="/new-in" class="text-sm font-medium text-[#232B1F]">
+					New In
+				</a>
+
+				
+				<a	href="/shop"
+					class="text-sm font-medium text-[#6B7266] transition hover:text-[#232B1F]"
+				>
+					Shop all
+				</a>
+
+				
+				<a	href="/our-edit"
+					class="text-sm font-medium text-[#6B7266] transition hover:text-[#232B1F]"
+				>
+					Our edit
+				</a>
+			</div>
+
+			
+			
+			<div class="flex items-center gap-4">
+    if user == nil {
+        <a
+            href="/login"
+            class="group flex bg-[#c6d1bc] p-2 rounded-md items-center gap-2 text-sm font-medium text-[#3f4939] transition hover:bg-[#b8c6ac] text-md py-2 hover:text-[#343d2f]"
+        >
+            <img
+                src="/static/public/log-in.png"
+                alt="Login"
+                class="h-4 w-4 opacity-60 transition-opacity duration-200 group-hover:opacity-100"
+            />
+            <span>Login</span>
+        </a>
+    } else {
+        <div
+            class="relative"
+            data-signals:profile-open="false"
+        >
+            <button
+                type="button"
+                data-on:click="$profileOpen = !$profileOpen"
+                class="flex items-center justify-center"
+            >
+                <img
+                    src="/static/public/profile.png"
+                    class="h-7 w-7"
+                    alt="Profile"
+                />
+            </button>
+			
+            <div
+                data-show="$profileOpen"
+                class="absolute left-1/2 -translate-x-1/2 top-full mt-2 rounded-lg border border-[#e1e5dc] bg-white p-3 shadow-lg"
+            >
+                <div class="border-b border-[#e5e8e2] px-3 pb-3">
+                    <p class="text-sm font-semibold text-[#40463b]">
+                        { user.Name }
+                    </p>
+                    <p class="mt-1 text-xs text-[#777d71]">
+                        { user.Email }
+                    </p>
+                </div>
+			
+                <div class="py-2">
+
+              		if user.Role == "admin" {
+                     <a href="/admin/dashboard"
+                     class="block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]">
+                    Dashboard </a>
+                  } else {
+                    <a
+                        href="/profile"
+                        class="block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]"
+                    >
+                        Profile
+                    </a>
+			
+                    <a
+                        href="/orders"
+                        class="block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]"
+                    >
+                        My Orders
+                    </a>
+                  }
+                </div>
+			
+                <div class="border-t border-[#e5e8e2] pt-2">
+                    <form method="POST" action="/logout">
+                        <button
+                            type="submit"
+                            class="w-full flex items-center justify-start gap-2 rounded-md px-3 py-2 text-left text-sm text-[#596052] hover:bg-[#f1f3ee]"
+                        >
+                        <img src="/static/public/logout.png" alt="Logout" class="h-4 w-4 opacity-60 transition-opacity duration-200 group-hover:opacity-100" />
+                            Logout
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+			</div>
+
+
+		</div>
+	</nav>
+}

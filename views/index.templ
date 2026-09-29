@@ -1,19 +1,15 @@
 package views
 
-import "github.com/sudip-kandel7/eveCollection/views/components"
+import "github.com/sudip-kandel7/eveCollection/internal/db"
 
 templ index() {
-	<div>
-		hello chut
+	<div class="text-red-500">
+		hello world		
 	</div>
 }
 
-templ IndexRenderer() {
-	<html>
-	@components.Head("index"){
-		<meta name="description" content="My page">
+templ IndexRenderer(user *db.User) {
+	@Html("Eve collection", user) {
+		@index()
 	}
-	@index()
-
-	</html>
-}
+} 

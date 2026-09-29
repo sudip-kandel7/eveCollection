@@ -1,0 +1,23 @@
+package components
+
+templ LoginErrors(errs map[string]string, nonField []string) {
+	<div id="err-identifier">
+		if msg, ok := errs["identifier"]; ok {
+			<p class="mt-1 text-sm text-red-600">{ msg }</p>
+		}
+	</div>
+	<div id="err-password">
+		if msg, ok := errs["password"]; ok {
+			<p class="mt-1 text-sm text-red-600">{ msg }</p>
+		}
+	</div>
+	<div id="err-nonfield">
+		if len(nonField) > 0 {
+			<div class="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+				for _, msg := range nonField {
+					<p class="text-sm text-red-600">{ msg }</p>
+				}
+			</div>
+		}
+	</div>
+}	
