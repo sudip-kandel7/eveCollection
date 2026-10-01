@@ -15,6 +15,7 @@ type Validator struct{
 var (
 	EmailRX = regexp.MustCompile(`^[a-zA-Z0-9.!#$%&'*+/=?^_` + "`" + `{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.[a-zA-Z]{2,}$`)
 	NameRX   = regexp.MustCompile(`^[A-Za-z][A-Za-z ]*$`)
+	CategoryNameRX = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9 &'\-]*$`)
 	PhoneRX = regexp.MustCompile(`^(97|98)[0-9]*$`)
 	UpperRX  = regexp.MustCompile(`[A-Z]`)
 	LowerRX  = regexp.MustCompile(`[a-z]`)

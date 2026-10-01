@@ -11,6 +11,64 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const categoryNameTaken = `-- name: CategoryNameTaken :one
+SELECT EXISTS( SELECT 1 FROM categories WHERE name = $1 ) AS taken
+`
+
+func (q *Queries) CategoryNameTaken(ctx context.Context, name string) (bool, error) {
+	row := q.db.QueryRow(ctx, categoryNameTaken, name)
+	var taken bool
+	err := row.Scan(&taken)
+	return taken, err
+}
+
+const categoryNameTakenForUpdate = `-- name: CategoryNameTakenForUpdate :one
+SELECT EXISTS (
+    SELECT 1
+    FROM categories
+    WHERE name = $1
+      AND id <> $2
+) AS taken
+`
+
+type CategoryNameTakenForUpdateParams struct {
+	Name string
+	ID   int32
+}
+
+func (q *Queries) CategoryNameTakenForUpdate(ctx context.Context, arg CategoryNameTakenForUpdateParams) (bool, error) {
+	row := q.db.QueryRow(ctx, categoryNameTakenForUpdate, arg.Name, arg.ID)
+	var taken bool
+	err := row.Scan(&taken)
+	return taken, err
+}
+
+const createCategory = `-- name: CreateCategory :one
+INSERT INTO categories (name, image_url, is_active)
+VALUES ($1, $2, $3)
+RETURNING id, name, image_url, is_active, created_at, updated_at
+`
+
+type CreateCategoryParams struct {
+	Name     string
+	ImageUrl pgtype.Text
+	IsActive bool
+}
+
+func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error) {
+	row := q.db.QueryRow(ctx, createCategory, arg.Name, arg.ImageUrl, arg.IsActive)
+	var i Category
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.ImageUrl,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (name, phone, email, role, address, password_hash, salt)
 VALUES ($1, $2, $3, 'customer', $4, $5, $6)
@@ -58,6 +116,15 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 	return i, err
 }
 
+const deleteCategory = `-- name: DeleteCategory :exec
+DELETE FROM categories WHERE id = $1
+`
+
+func (q *Queries) DeleteCategory(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, deleteCategory, id)
+	return err
+}
+
 const emailTaken = `-- name: EmailTaken :one
 SELECT EXISTS( SELECT 1 FROM users WHERE email = $1 ) AS taken
 `
@@ -67,6 +134,26 @@ func (q *Queries) EmailTaken(ctx context.Context, email string) (bool, error) {
 	var taken bool
 	err := row.Scan(&taken)
 	return taken, err
+}
+
+const getCategory = `-- name: GetCategory :one
+SELECT id, name, image_url, is_active, created_at, updated_at
+FROM categories
+WHERE id = $1
+`
+
+func (q *Queries) GetCategory(ctx context.Context, id int32) (Category, error) {
+	row := q.db.QueryRow(ctx, getCategory, id)
+	var i Category
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.ImageUrl,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const getUser = `-- name: GetUser :one
@@ -194,6 +281,48 @@ func (q *Queries) GetUserRole(ctx context.Context, id int32) (string, error) {
 	return role, err
 }
 
+const listCategoriesWithPC = `-- name: ListCategoriesWithPC :many
+SELECT c.id, c.name, c.image_url, c.is_active, c.created_at, c.updated_at, COUNT(p.id) AS product_count FROM categories c LEFT JOIN products p ON p.category_id = c.id GROUP BY c.id, c.name, c.image_url, c.is_active, c.created_at, c.updated_at ORDER BY c.name
+`
+
+type ListCategoriesWithPCRow struct {
+	ID           int32
+	Name         string
+	ImageUrl     pgtype.Text
+	IsActive     bool
+	CreatedAt    pgtype.Timestamp
+	UpdatedAt    pgtype.Timestamp
+	ProductCount int64
+}
+
+func (q *Queries) ListCategoriesWithPC(ctx context.Context) ([]ListCategoriesWithPCRow, error) {
+	rows, err := q.db.Query(ctx, listCategoriesWithPC)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCategoriesWithPCRow
+	for rows.Next() {
+		var i ListCategoriesWithPCRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ImageUrl,
+			&i.IsActive,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ProductCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const phoneTaken = `-- name: PhoneTaken :one
 SELECT EXISTS( SELECT 1 FROM users WHERE phone = $1 ) AS taken
 `
@@ -203,6 +332,73 @@ func (q *Queries) PhoneTaken(ctx context.Context, phone string) (bool, error) {
 	var taken bool
 	err := row.Scan(&taken)
 	return taken, err
+}
+
+const updateCategory = `-- name: UpdateCategory :one
+UPDATE categories
+SET
+    name = $2,
+    is_active = $3,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, name, image_url, is_active, created_at, updated_at
+`
+
+type UpdateCategoryParams struct {
+	ID       int32
+	Name     string
+	IsActive bool
+}
+
+func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (Category, error) {
+	row := q.db.QueryRow(ctx, updateCategory, arg.ID, arg.Name, arg.IsActive)
+	var i Category
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.ImageUrl,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateCategoryWithImage = `-- name: UpdateCategoryWithImage :one
+UPDATE categories
+SET
+    name = $2,
+    image_url = $3,
+    is_active = $4,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, name, image_url, is_active, created_at, updated_at
+`
+
+type UpdateCategoryWithImageParams struct {
+	ID       int32
+	Name     string
+	ImageUrl pgtype.Text
+	IsActive bool
+}
+
+func (q *Queries) UpdateCategoryWithImage(ctx context.Context, arg UpdateCategoryWithImageParams) (Category, error) {
+	row := q.db.QueryRow(ctx, updateCategoryWithImage,
+		arg.ID,
+		arg.Name,
+		arg.ImageUrl,
+		arg.IsActive,
+	)
+	var i Category
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.ImageUrl,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const updateUser = `-- name: UpdateUser :one

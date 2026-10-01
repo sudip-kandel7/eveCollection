@@ -6,6 +6,7 @@ require (
 	github.com/a-h/templ v0.3.1020
 	github.com/alexedwards/scs/pgxstore v0.0.0-20251002162104-209de6e426de
 	github.com/alexedwards/scs/v2 v2.9.0
+	github.com/disintegration/imaging v1.6.2
 	github.com/go-playground/form/v4 v4.5.0
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/joho/godotenv v1.5.1
@@ -20,6 +21,7 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
+	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8 // indirect
 	golang.org/x/sync v0.17.0 // indirect
 	golang.org/x/text v0.29.0 // indirect
 )
