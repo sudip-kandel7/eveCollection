@@ -39,6 +39,8 @@ func (app *Application) routes() http.Handler {
 	mux.Handle("POST /admin/categories/{id}", app.requireAdmin(http.HandlerFunc(app.UpdateCategory)))
 	mux.Handle("POST /admin/categories/{id}/delete", app.requireAdmin(http.HandlerFunc(app.DeleteCategory)))
 
+	mux.Handle("POST /admin/products", app.requireAdmin(http.HandlerFunc(app.Products)))
+
 	
 	return mux
 	

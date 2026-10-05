@@ -59,7 +59,7 @@ func adminLogin(form AdminLoginFormData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<form class=\"mt-6 space-y-4\" method=\"POST\" action=\"/admin/login\"><div><label for=\"identifier\" class=\"mb-1.5 block text-xs font-medium text-[#B6BCB1]\">Identifier</label> <input id=\"identifier\" name=\"identifier\" type=\"text\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<form class=\"mt-6 space-y-4\" method=\"POST\" action=\"/admin/login\"><div><label for=\"identifier\" class=\"mb-1.5 block text-xs font-medium text-[#B6BCB1]\">Email or Phone</label> <input id=\"identifier\" name=\"identifier\" type=\"text\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

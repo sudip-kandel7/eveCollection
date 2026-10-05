@@ -106,7 +106,7 @@ func (app *Application) Dashboard(w http.ResponseWriter, r *http.Request){
 		return
 	}
 	
-	views.DashboardRenderer(user, "overview", categories).Render(r.Context(), w)
+	views.DashboardRenderer(user, "products", categories).Render(r.Context(), w)
 }
 
 func (app *Application) Logout(w http.ResponseWriter, r *http.Request) {
@@ -875,4 +875,138 @@ func (app *Application) DeleteCategory(w http.ResponseWriter, r *http.Request) {
 	sse := datastar.NewSSE(w, r)
 	sse.PatchElementTempl(views.CategoryAdminContent(categories), datastar.WithSelectorID("category-admin"))
 	sse.PatchSignals([]byte(`{"formmode":"create","categoryid":"0","catname":"","catimage":"","catpreview":"","catactive":true,"submitting":false}`))
+}
+
+type Tag struct {
+	tag string
+}
+
+type productForm struct {
+	Name    string `form:"name"`
+	Category string `form:"category"`
+	Description string `form:"description"`
+	BasePrice string `form:"baseprice"`
+	IsActive string `form:"is_active"`
+	Tags []Tag `form:"tags"`
+	validator.Validator `form:"-"`
+}
+
+func (app *Application) Products(w http.ResponseWriter, r *http.Request) {
+	const maxUploadSize = 5 << 20
+
+	var form productForm
+
+	if err := r.ParseMultipartForm(maxUploadSize); err != nil && !errors.Is(err, http.ErrNotMultipart) {
+		app.serverError(w, r, err)
+		return
+	}
+
+
+	err := app.decodePostForm(r, &form)
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	form.CheckField(validator.NotBlank(form.Name), "name", "This field cannot be blank")
+	form.CheckField(validator.MinChars(form.Name, 2), "name", "Name must be at least 2 characters")
+	form.CheckField(validator.MaxChars(form.Name, 50), "name", "Name cannot exceed 50 characters")
+	form.CheckField(validator.Matches(form.Name, validator.CategoryNameRX), "name", "Name contains invalid characters")
+
+	if form.Name != "" {
+		taken, err := app.queries.CategoryNameTaken(r.Context(), form.Name)
+		if err != nil {
+			app.serverError(w, r, err)
+			return
+		}
+		form.CheckField(!taken, "name", "A category with this name already exists")
+	}
+
+	var imageBytes []byte
+
+	file, header, err := r.FormFile("image")
+	switch {
+	case err == nil:
+		defer file.Close()
+
+		if header.Size > maxUploadSize {
+			form.AddFieldError("image", "Image must be under 5MB")
+		}
+
+		buf := make([]byte, 512)
+		if _, err := io.ReadFull(file, buf); err != nil &&
+			!errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
+			app.serverError(w, r, err)
+			return
+		}
+		
+		if contentType := http.DetectContentType(buf); contentType != "image/jpeg" && contentType != "image/png" {
+    form.AddFieldError("image", "Image must be JPG, JPEG or PNG")
+		}
+
+
+		if form.Valid() {
+			file.Seek(0, io.SeekStart)
+			imageBytes, err = processImage(file)
+			if err != nil {
+				app.serverError(w, r, err)
+				return
+			}
+		}
+	case errors.Is(err, http.ErrMissingFile), errors.Is(err, http.ErrNotMultipart):
+		form.AddFieldError("image", "Please upload an image")
+	default:
+		app.serverError(w, r, err)
+		return
+	}
+
+	if !form.Valid() {
+    sse := datastar.NewSSE(w, r)
+    sse.PatchElementTempl(components.CategoryErrors(form.FieldErrors))
+    sse.PatchSignals([]byte(`{"submitting": false}`))
+    return
+	}
+
+	
+	uploadDir := "uploads"
+	
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+    app.serverError(w, r, err)
+    return
+	}
+	
+	filename := fmt.Sprintf("%d_%s.jpg", time.Now().UnixNano(), slugify(form.Name))
+	savePath := filepath.Join(uploadDir, filename)
+	
+	if err := os.WriteFile(savePath, imageBytes, 0644); err != nil {
+    app.serverError(w, r, err)
+    return
+	}
+
+	
+	imageURL := "/uploads/" + filename
+
+
+	isActive := form.IsActive == "on"
+
+	_, err = app.queries.CreateCategory(r.Context(), db.CreateCategoryParams{
+		Name:     form.Name,
+		ImageUrl: pgtype.Text{String: imageURL, Valid: true},
+		IsActive: isActive,
+	})
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	categories, err := app.queries.ListCategoriesWithPC(r.Context())
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r)
+	sse.PatchElementTempl(components.CategoryErrors(map[string]string{}))
+	sse.PatchElementTempl(views.CategoryAdminContent(categories), datastar.WithSelectorID("category-admin"))
+	sse.PatchSignals([]byte(`{"submitting": false, "catname": "", "catimage": "", "catpreview": ""}`))
 }

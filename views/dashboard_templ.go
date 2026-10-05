@@ -50,7 +50,7 @@ func dashboard(user *db.User, tab string, categories []db.ListCategoriesWithPCRo
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue("'" + tab + "'")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 18, Col: 83}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 18, Col: 82}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -65,6 +65,10 @@ func dashboard(user *db.User, tab string, categories []db.ListCategoriesWithPCRo
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = dashboardNavLink("category", "Category").Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = dashboardNavLink("products", "Products").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -84,11 +88,11 @@ func dashboard(user *db.User, tab string, categories []db.ListCategoriesWithPCRo
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = overviewContent(user).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = OverviewContent(user).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = ordersAdminContent().Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = OrdersAdminContent().Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -96,11 +100,15 @@ func dashboard(user *db.User, tab string, categories []db.ListCategoriesWithPCRo
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = messagesAdminContent().Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = ProductsAdminContent(categories).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = reviewsAdminContent().Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = MessagesAdminContent().Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = ReviewsAdminContent().Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -140,7 +148,7 @@ func dashboardNavLink(tab, label string) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue("$activetab = '" + tab + "'")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 51, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 47, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -153,7 +161,7 @@ func dashboardNavLink(tab, label string) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue("$activetab === '" + tab + "' ? 'block rounded-lg bg-gray-100 px-4 py-3 text-sm font-medium text-gray-900' : 'mt-1 block rounded-lg px-4 py-3 text-sm text-gray-600 transition hover:bg-gray-100'")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 52, Col: 214}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 48, Col: 214}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
@@ -166,7 +174,7 @@ func dashboardNavLink(tab, label string) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 54, Col: 9}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 50, Col: 9}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -180,7 +188,7 @@ func dashboardNavLink(tab, label string) templ.Component {
 	})
 }
 
-func overviewContent(user *db.User) templ.Component {
+func OverviewContent(user *db.User) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -242,7 +250,7 @@ func CategoryAdminContent(categories []db.ListCategoriesWithPCRow) templ.Compone
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue("$categoryid === " + strconv.FormatInt(int64(c.ID), 10) + " ? 'group grid grid-cols-[40px_1fr_90px_90px_90px] items-center gap-3 rounded-xl border-2 border-[#283B28] bg-[#F7F8F5] p-3 transition hover:-translate-y-0.5 hover:shadow-md' : 'group grid grid-cols-[40px_1fr_90px_90px_90px] items-center gap-3 rounded-xl border-2 border-[#E5E8DF] bg-white p-3 transition hover:-translate-y-0.5 hover:shadow-md'")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 114, Col: 428}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 110, Col: 428}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 			if templ_7745c5c3_Err != nil {
@@ -255,7 +263,7 @@ func CategoryAdminContent(categories []db.ListCategoriesWithPCRow) templ.Compone
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(textOrEmpty(c.ImageUrl))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 116, Col: 40}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 112, Col: 40}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 			if templ_7745c5c3_Err != nil {
@@ -268,7 +276,7 @@ func CategoryAdminContent(categories []db.ListCategoriesWithPCRow) templ.Compone
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(c.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 117, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 113, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -281,7 +289,7 @@ func CategoryAdminContent(categories []db.ListCategoriesWithPCRow) templ.Compone
 			var templ_7745c5c3_Var12 templ.SafeURL
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL("/admin/products?category=" + strconv.FormatInt(int64(c.ID), 10)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 120, Col: 89}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 116, Col: 89}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -294,7 +302,7 @@ func CategoryAdminContent(categories []db.ListCategoriesWithPCRow) templ.Compone
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%02d", c.ProductCount))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 123, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 119, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -323,7 +331,7 @@ func CategoryAdminContent(categories []db.ListCategoriesWithPCRow) templ.Compone
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue("$formmode = 'edit'; $categoryid = " + strconv.FormatInt(int64(c.ID), 10) + "; $catname = '" + c.Name + "'; $catactive = " + strconv.FormatBool(c.IsActive) + "; " +
 				"$catpreview = " + strconv.Quote(c.ImageUrl.String))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 137, Col: 67}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 133, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 			if templ_7745c5c3_Err != nil {
@@ -341,7 +349,7 @@ func CategoryAdminContent(categories []db.ListCategoriesWithPCRow) templ.Compone
 				var templ_7745c5c3_Var15 string
 				templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue("confirm('Delete " + c.Name + "? This can\\'t be undone.') && @post('/admin/categories/" + strconv.FormatInt(int64(c.ID), 10) + "/delete')")
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 146, Col: 164}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 142, Col: 164}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 				if templ_7745c5c3_Err != nil {
@@ -376,7 +384,7 @@ func CategoryAdminContent(categories []db.ListCategoriesWithPCRow) templ.Compone
 	})
 }
 
-func ordersAdminContent() templ.Component {
+func ProductsAdminContent(categories []db.ListCategoriesWithPCRow) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -397,7 +405,79 @@ func ordersAdminContent() templ.Component {
 			templ_7745c5c3_Var16 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<section data-show=\"$activetab === 'orders'\" class=\"px-10 py-8\"><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">Orders</h1><p class=\"mt-2 text-sm text-[#63685F]\">Your order history will show up here.</p></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<section id=\"products-admin\" data-show=\"$activetab === 'products'\" class=\"px-10 py-8\" data-signals:pformmode=\"'edit'\" data-signals:productid=\"'0'\" data-signals:pname=\"''\" data-signals:pcategory=\"''\" data-signals:pdescription=\"''\" data-signals:pprice=\"''\" data-signals:pvisible=\"true\" data-signals:psubmitting=\"false\" data-signals:prowcount=\"1\" data-signals:psearch=\"''\" data-signals:pcatfilter=\"''\"><div class=\"grid grid-cols-1 gap-6 xl:grid-cols-2 items-start\"><div class=\"rounded-2xl border border-[#E5E8DF] bg-white p-8\"><span class=\"text-xs font-semibold uppercase tracking-wide text-[#8A9285]\">Product details</span><h2 class=\"mt-1 text-2xl font-bold tracking-tight text-[#20231F]\" data-text=\"$pformmode === 'create' ? 'Add a product' : 'Edit product'\"></h2><form id=\"product-form\" class=\"mt-6\" enctype=\"multipart/form-data\" data-on:datastar-fetch.document=\"evt.detail.type === 'finished' && ($psubmitting = false)\" data-on:submit__prevent=\"$psubmitting = true; $pformmode === 'create' ? @post('/admin/products', {contentType: 'form'}) : @post('/admin/products/' + $productid, {contentType: 'form'})\"><div class=\"grid grid-cols-2 gap-4\"><div><label class=\"mb-1.5 block text-sm font-medium text-[#20231F]\">Product name <span class=\"text-xs text-[#8A9285]\">*</span></label> <input type=\"text\" name=\"name\" data-bind:pname class=\"w-full rounded-xl border border-[#DFE5DA] bg-white px-3.5 py-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]\" placeholder=\"e.g. Everyday linen shirt\"><div id=\"err-name\" class=\"mt-1 text-xs text-red-600\"></div></div><div><label class=\"mb-1.5 block text-sm font-medium text-[#20231F]\">Category <span class=\"text-xs text-[#8A9285]\">*</span></label> <select name=\"category_id\" data-bind:pcategory class=\"w-full rounded-xl border border-[#DFE5DA] bg-white px-3.5 py-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]\"><option value=\"\" disabled selected>Choose a category</option> ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		for _, c := range categories {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<option value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var17 string
+			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.FormatInt(int64(c.ID), 10))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 210, Col: 59}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var18 string
+			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(c.Name)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 210, Col: 70}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</option>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</select><div id=\"err-category\" class=\"mt-1 text-xs text-red-600\"></div></div></div><label class=\"block text-sm font-medium text-[#20231F]\">Description</label> <textarea name=\"description\" rows=\"3\" data-bind:pdescription class=\"mt-1.5 w-full rounded-xl border border-[#DFE5DA] bg-white px-3.5 py-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]\" placeholder=\"Tell customers what makes it special...\"></textarea><div id=\"err-description\" class=\"mt-1 text-xs text-red-600\"></div><div class=\"mt-5 grid grid-cols-[1fr_auto] items-end gap-4\"><div><label class=\"block text-sm font-medium text-[#20231F]\">Base price <span class=\"text-xs text-[#8A9285]\">*</span></label><div class=\"relative mt-1.5\"><span class=\"pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-sm text-[#8A9285]\">Rs.</span> <input type=\"text\" name=\"base_price\" data-bind:pprice class=\"w-full rounded-xl border border-[#DFE5DA] bg-white py-2.5 pl-10 pr-3.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]\" placeholder=\"0.00\"></div><div id=\"err-price\" class=\"mt-1 text-xs text-red-600\"></div></div><label class=\"flex cursor-pointer items-center gap-2 pb-2.5 text-sm font-medium text-[#20231F]\"><input type=\"checkbox\" name=\"is_active\" data-bind:pvisible class=\"h-4 w-4 rounded border-[#DFE5DA]\"> Active</label></div><label class=\"block text-sm font-medium text-[#20231F]\">Tags <span class=\"text-xs text-[#8A9285]\">*</span></label><div class=\"mt-1.5 flex flex-wrap items-center gap-2 rounded-xl border border-[#DFE5DA] bg-white px-3 py-2\"><input type=\"text\" id=\"tag-input\" class=\"min-w-[120px] flex-1 border-none p-1 text-sm text-[#20231F] outline-none\" placeholder=\"Add another tag...\" data-on:keydown=\"\n            if (evt.key === 'Enter') {\n                evt.preventDefault();\n                const value = evt.target.value.trim();\n                if (!value) return;\n                const wrap = document.createElement('div');\n                wrap.className = 'flex items-center gap-2 rounded-lg bg-[#EEF2EB] px-3 py-1.5 text-sm text-[#283B28]';\n                const span = document.createElement('span');\n                span.textContent = value;\n                const hidden = document.createElement('input');\n                hidden.type = 'hidden';\n                hidden.name = 'tags[]';\n                hidden.value = value;\n                const btn = document.createElement('button');\n                btn.type = 'button';\n                btn.textContent = '×';\n                btn.className = 'font-bold text-[#63685F] hover:text-red-600';\n                btn.onclick = function() { wrap.remove(); };\n                wrap.appendChild(hidden);\n                wrap.appendChild(span);\n                wrap.appendChild(btn);\n                document.getElementById('tags').appendChild(wrap);\n                evt.target.value = '';\n            }\n        \"> <button type=\"button\" id=\"tag\" title=\"Add tag\" aria-label=\"Add tag\" data-on:click=\"\n            const input = document.getElementById('tag-input');\n            const value = input.value.trim();\n            if (!value) return;\n            const wrap = document.createElement('div');\n            wrap.className = 'flex items-center gap-2 rounded-lg bg-[#EEF2EB] px-3 py-1.5 text-sm text-[#283B28]';\n            const span = document.createElement('span');\n            span.textContent = value;\n            const hidden = document.createElement('input');\n            hidden.type = 'hidden';\n            hidden.name = 'tags[]';\n            hidden.value = value;\n            const btn2 = document.createElement('button');\n            btn2.type = 'button';\n            btn2.textContent = '×';\n            btn2.className = 'font-bold text-[#63685F] hover:text-red-600';\n            btn2.onclick = function() { wrap.remove(); };\n            wrap.appendChild(hidden);\n            wrap.appendChild(span);\n            wrap.appendChild(btn2);\n            document.getElementById('tags').appendChild(wrap);\n            input.value = '';\n        \" class=\"flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F0EFE9] text-sm font-semibold leading-none text-[#283B28] transition hover:bg-[#E5E8DF]\">+</button></div><div id=\"tags\" class=\"mt-3 flex flex-wrap gap-2\"></div><div class=\"mt-5 flex items-baseline justify-between\"><label class=\"block text-sm font-medium text-[#20231F]\">Product images <span class=\"text-xs text-[#8A9285]\">*</span></label> <span class=\"text-xs text-[#8A9285]\">First image is the cover</span></div><label class=\"mt-1.5 flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-[#DFE5DA] px-4 py-4 text-sm text-[#63685F] hover:bg-[#F7F8F5]\"><input type=\"file\" id=\"images-input\" name=\"images\" multiple class=\"hidden\" accept=\"image/jpeg,image/png,image/webp\" data-on:change=\"\n            window.productImages = (window.productImages || []).concat(Array.from(evt.target.files));\n            renderProductImages();\n            evt.target.value = '';\n        \"> <span><span class=\"block font-medium text-[#20231F]\">Upload product photos</span> <span class=\"block text-xs text-[#8A9285]\">JPG, PNG or WebP · up to 2MB each</span></span></label><div id=\"image-previews\" class=\"mt-3 flex flex-wrap gap-2\"></div><div id=\"err-images\" class=\"mt-1 text-xs text-red-600\"></div><script>\n\t\t\t\t\tfunction renderProductImages() {\n    var container = document.getElementById('image-previews');\n    container.innerHTML = '';\n\n    window.productImages.forEach(function (f, i) {\n        var wrap = document.createElement('div');\n        wrap.className = 'relative';\n\n        var img = document.createElement('img');\n        img.src = URL.createObjectURL(f);\n        img.className = 'h-20 w-20 rounded-xl object-cover border border-[#E5E8DF]';\n        wrap.appendChild(img);\n\n        if (i === 0) {\n            var badge = document.createElement('span');\n            badge.textContent = 'COVER';\n            badge.className = 'absolute bottom-1 left-1 rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-semibold text-white';\n            wrap.appendChild(badge);\n        }\n\n        var removeBtn = document.createElement('button');\n        removeBtn.type = 'button';\n        removeBtn.textContent = '×';\n        removeBtn.className = 'absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white hover:bg-red-600';\n        removeBtn.onclick = function () {\n            window.productImages.splice(i, 1);\n            renderProductImages();\n        };\n        wrap.appendChild(removeBtn);\n\n        container.appendChild(wrap);\n    });\n\n    var input = document.getElementById('images-input');\n       var dt = new DataTransfer();\n       window.productImages.forEach(function (f) { dt.items.add(f); });\n       input.files = dt.files;\n\t\t\t\t\t}\n\t\t\t\t\t</script><div class=\"mt-8 border-t border-[#E5E8DF] pt-6\"><div class=\"flex items-center justify-between\"><div><h3 class=\"text-sm font-semibold text-[#20231F]\">Variants <span class=\"text-xs text-[#8A9285]\">*</span></h3><p class=\"text-xs text-[#8A9285]\">Stock is tracked for each color and size.</p></div><button type=\"button\" id=\"add-variant\" class=\"flex items-center gap-1.5 rounded-full border border-[#DFE5DA] bg-white px-4 py-2 text-sm font-medium text-[#283B28] hover:bg-[#F0EFE9]\">+ Add variant</button></div><div id=\"variants-container\" class=\"mt-4 space-y-4\"></div></div><script>\n\t\t\t\t\t(function () {\n    let variantIndex = 0;\n\t\t\t\t\t\n    const container = document.getElementById('variants-container');\n    const addButton = document.getElementById('add-variant');\n\t\t\t\t\t\n    function addVariant() {\t\t\t\t\t\n        const index = variantIndex++;\n\t\t\t\t\t\n        const row = document.createElement('div');\n\t\t\t\t\t\n        row.className =\n            'variant-row rounded-xl border border-[#E5E8DF] bg-[#FBFBF9] p-4';\n\t\t\t\t\t\n        row.innerHTML = `\n            <div class=\"flex items-center justify-between\">\n\t\t\t\t\t\n                <span class=\"variant-number text-xs font-semibold uppercase tracking-wide text-[#8A9285]\">\n                    Variant ${container.children.length + 1}\n                </span>\n\t\t\t\t\t\n                <button\n                    type=\"button\"\n                    class=\"remove-variant text-xs font-medium text-red-500 hover:text-red-700\"\n                >\n                    Remove\n                </button>\n\t\t\t\t\t\n            </div>\n\t\t\t\t\t\n            <div class=\"mt-3 grid grid-cols-4 gap-3\">\n\t\t\t\t\t\n                <div>\n                    <label class=\"mb-1 block text-xs font-medium text-[#63685F]\">\n                        Color <span class=\"text-xs text-[#8A9285]\">*</span>\n                    </label>\n\t\t\t\t\t\n                    <input\n                        type=\"text\"\n                        name=\"variants[${index}][color]\"\n                        class=\"w-full rounded-lg border border-[#DFE5DA] bg-white px-2.5 py-2 text-sm text-[#20231F] outline-none focus:border-[#283B28]\"\n                    />\n                </div>\n\t\t\t\t\t\n                <div>\n                    <label class=\"mb-1 block text-xs font-medium text-[#63685F]\">\n                        Size <span class=\"text-xs text-[#8A9285]\">*</span>\n                    </label>\n\t\t\t\t\t\n                    <input\n                        type=\"text\"\n                        name=\"variants[${index}][size]\"\n                        class=\"w-full rounded-lg border border-[#DFE5DA] bg-white px-2.5 py-2 text-sm text-[#20231F] outline-none focus:border-[#283B28]\"\n                    />\n                </div>\n\t\t\t\t\t\n                <div>\n                    <label class=\"mb-1 block text-xs font-medium text-[#63685F]\">\n                        Stock <span class=\"text-xs text-[#8A9285]\">*</span>\n                    </label>\n\t\t\t\t\t\n                    <input\n                        type=\"number\"\n                        min=\"0\"\n                        name=\"variants[${index}][stock]\"\n                        class=\"w-full rounded-lg border border-[#DFE5DA] bg-white px-2.5 py-2 text-sm text-[#20231F] outline-none focus:border-[#283B28]\"\n                    />\n                </div>\n\t\t\t\t\t\n                <div>\n                    <label class=\"mb-1 block text-xs font-medium text-[#63685F]\">\n                        Price\n                    </label>\n\t\t\t\t\t\n                    <div class=\"relative\">\n\t\t\t\t\t\n                        <span class=\"pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-xs text-[#8A9285]\">\n                            Rs.\n                        </span>\n\t\t\t\t\t\n                        <input\n                            type=\"text\"\n                            name=\"variants[${index}][price]\"\n                            placeholder=\"Base\"\n                            class=\"w-full rounded-lg border border-[#DFE5DA] bg-white py-2 pl-8 pr-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]\"\n                        />\n\t\t\t\t\t\n                    </div>\n                </div>\n\t\t\t\t\t\n            </div>\n        `;\n\t\t\t\t\t\n        container.appendChild(row);\n\t\t\t\t\t\n        updateVariantNumbers();\n        updateRemoveButtons();\n    }\n\t\t\t\t\t\n    function removeVariant(row) {\n\t\t\t\t\t\n        row.remove();\n\t\t\t\t\t\n        updateVariantNumbers();\n        updateRemoveButtons();\n    }\n\t\t\t\t\t\n    function updateVariantNumbers() {\n\t\t\t\t\t\n        const rows = container.querySelectorAll('.variant-row');\n\t\t\t\t\t\n        rows.forEach(function (row, index) {\n\t\t\t\t\t\n            const title = row.querySelector('.variant-number');\n\t\t\t\t\t\n            title.textContent = 'Variant ' + (index + 1);\n        });\n    }\n\t\t\t\t\t\n    function updateRemoveButtons() {\n\t\t\t\t\t\n        const rows = container.children;\n\t\t\t\t\t\n        const buttons =\n            container.querySelectorAll('.remove-variant');\n\t\t\t\t\t\n        buttons.forEach(function (button) {\n\t\t\t\t\t\n            button.style.display =\n                rows.length > 1 ? '' : 'none';\n        });\n    }\n\t\t\t\t\t\n    addButton.addEventListener('click', function () {\n        addVariant();\n    });\n\t\t\t\t\t\n    container.addEventListener('click', function (event) {\n\t\t\t\t\t\n        const button =\n            event.target.closest('.remove-variant');\n\t\t\t\t\t\n        if (!button) {\n            return;\n        }\n\t\t\t\t\t\n        const row =\n            button.closest('.variant-row');\n\t\t\t\t\t\n        if (row) {\n            removeVariant(row);\n        }\n    });\n\t\t\t\t\t\n    addVariant();\n\t\t\t\t\t\n\t\t\t\t\t})();\n\t\t\t\t\t</script><div class=\"mt-8 flex items-center justify-between border-t border-[#E5E8DF] pt-6\"><span class=\"text-xs text-[#8A9285]\">* Required fields</span><div class=\"flex gap-2\"><button type=\"button\" data-show=\"$pformmode === 'edit'\" data-on:click=\"$pformmode = 'create'; $productid = '0'; $pname = ''; $pcategory = ''; $pdescription = ''; $pprice = ''; $pvisible = true; document.getElementById('tags').innerHTML = ''; document.getElementById('tag-input').value = ''; window.productImages = []; renderProductImages(); resetVariants()\" class=\"flex-1 whitespace-nowrap rounded-lg border border-[#DFE5DA] bg-white px-4 py-2.5 text-sm font-medium text-[#63685F] transition hover:bg-[#F0EFE9]\">Cancel</button><script>\n\t\t\t\t\t\t\tfunction resetVariants() {\n\t\t\t\t\t\t\t\tvariantIndex = 0;\n\t\t\t\t\t\t\t\tcontainer.innerHTML = '';\n\t\t\t\t\t\t\t\taddVariant();\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t</script><button type=\"submit\" data-attr:disabled=\"$psubmitting\" class=\"flex-1 whitespace-nowrap rounded-lg bg-[#283B28] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#3C523C]\" data-text=\"$psubmitting ? 'Saving...' : ($pformmode === 'create' ? 'Create' : 'Update')\"></button></div></div></form></div><div class=\"rounded-2xl border border-[#E5E8DF] bg-white p-8\"><span class=\"text-xs font-semibold uppercase tracking-wide text-[#8A9285]\">Inventory overview</span><div class=\"mt-1 flex items-center gap-2\"><h2 class=\"text-2xl font-bold tracking-tight text-[#20231F]\">Your products</h2><span class=\"rounded-full bg-[#F0EFE9] px-2.5 py-0.5 text-xs font-semibold text-[#283B28]\" id=\"product-count\">0</span></div><div class=\"mt-6 flex gap-3\"><input type=\"text\" data-bind:psearch data-on:input__debounce.400ms=\"@get('/admin/products/search?q=' + $psearch + '&category=' + $pcatfilter)\" class=\"flex-1 rounded-xl border border-[#DFE5DA] bg-white px-3.5 py-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]\" placeholder=\"Search products\"> <select data-bind:pcatfilter data-on:change=\"@get('/admin/products/search?q=' + $psearch + '&category=' + $pcatfilter)\" class=\"rounded-xl border border-[#DFE5DA] bg-white px-3.5 py-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]\"><option value=\"\">All categories</option> ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		for _, c := range categories {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<option value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var19 string
+			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.FormatInt(int64(c.ID), 10))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 596, Col: 57}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var20 string
+			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(c.Name)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/dashboard.templ`, Line: 596, Col: 68}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "</option>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</select></div><div id=\"product-list\" class=\"mt-6 flex min-h-[300px] flex-col items-center justify-center gap-2 rounded-xl border border-[#E5E8DF] bg-[#FBFBF9] px-6 py-16 text-center\"><p class=\"max-w-xs text-sm text-[#8A9285]\">Add your first product with photos, variants, and stock details. It will appear here for you to manage.</p></div></div></div></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -405,7 +485,7 @@ func ordersAdminContent() templ.Component {
 	})
 }
 
-func messagesAdminContent() templ.Component {
+func OrdersAdminContent() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -421,12 +501,12 @@ func messagesAdminContent() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var17 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var17 == nil {
-			templ_7745c5c3_Var17 = templ.NopComponent
+		templ_7745c5c3_Var21 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var21 == nil {
+			templ_7745c5c3_Var21 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<section data-show=\"$activetab === 'messages'\" class=\"px-10 py-8\"><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">Messages</h1><p class=\"mt-2 text-sm text-[#63685F]\">Your conversations will show up here.</p></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<section data-show=\"$activetab === 'orders'\" class=\"px-10 py-8\"><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">Orders</h1><p class=\"mt-2 text-sm text-[#63685F]\">Your order history will show up here.</p></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -434,7 +514,7 @@ func messagesAdminContent() templ.Component {
 	})
 }
 
-func reviewsAdminContent() templ.Component {
+func MessagesAdminContent() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -450,12 +530,41 @@ func reviewsAdminContent() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var18 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var18 == nil {
-			templ_7745c5c3_Var18 = templ.NopComponent
+		templ_7745c5c3_Var22 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var22 == nil {
+			templ_7745c5c3_Var22 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<section data-show=\"$activetab === 'reviews'\" class=\"px-10 py-8\"><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">My reviews</h1><p class=\"mt-2 text-sm text-[#63685F]\">Reviews you've written will show up here.</p></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<section data-show=\"$activetab === 'messages'\" class=\"px-10 py-8\"><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">Messages</h1><p class=\"mt-2 text-sm text-[#63685F]\">Your conversations will show up here.</p></section>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+func ReviewsAdminContent() templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var23 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var23 == nil {
+			templ_7745c5c3_Var23 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<section data-show=\"$activetab === 'reviews'\" class=\"px-10 py-8\"><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">My reviews</h1><p class=\"mt-2 text-sm text-[#63685F]\">Reviews you've written will show up here.</p></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -479,12 +588,12 @@ func DashboardRenderer(user *db.User, tab string, categories []db.ListCategories
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var19 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var19 == nil {
-			templ_7745c5c3_Var19 = templ.NopComponent
+		templ_7745c5c3_Var24 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var24 == nil {
+			templ_7745c5c3_Var24 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Var20 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var25 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -502,7 +611,7 @@ func DashboardRenderer(user *db.User, tab string, categories []db.ListCategories
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = Html("Dashboard", user).Render(templ.WithChildren(ctx, templ_7745c5c3_Var20), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Html("Dashboard", user).Render(templ.WithChildren(ctx, templ_7745c5c3_Var25), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
