@@ -69,6 +69,107 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 	return i, err
 }
 
+const createProduct = `-- name: CreateProduct :one
+INSERT INTO products (name, description, category_id, base_price, is_active)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, name, description, category_id, base_price::float8, is_active, created_at, updated_at
+`
+
+type CreateProductParams struct {
+	Name        string
+	Description pgtype.Text
+	CategoryID  int32
+	BasePrice   pgtype.Numeric
+	IsActive    bool
+}
+
+type CreateProductRow struct {
+	ID          int32
+	Name        string
+	Description pgtype.Text
+	CategoryID  int32
+	BasePrice   float64
+	IsActive    bool
+	CreatedAt   pgtype.Timestamp
+	UpdatedAt   pgtype.Timestamp
+}
+
+func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (CreateProductRow, error) {
+	row := q.db.QueryRow(ctx, createProduct,
+		arg.Name,
+		arg.Description,
+		arg.CategoryID,
+		arg.BasePrice,
+		arg.IsActive,
+	)
+	var i CreateProductRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.CategoryID,
+		&i.BasePrice,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createProductImage = `-- name: CreateProductImage :exec
+INSERT INTO product_images (product_id, image_url, sort_order)
+VALUES ($1, $2, $3)
+`
+
+type CreateProductImageParams struct {
+	ProductID int32
+	ImageUrl  string
+	SortOrder int32
+}
+
+func (q *Queries) CreateProductImage(ctx context.Context, arg CreateProductImageParams) error {
+	_, err := q.db.Exec(ctx, createProductImage, arg.ProductID, arg.ImageUrl, arg.SortOrder)
+	return err
+}
+
+const createProductTag = `-- name: CreateProductTag :exec
+INSERT INTO product_tags (product_id, tag_id) VALUES ($1, $2)
+`
+
+type CreateProductTagParams struct {
+	ProductID int32
+	TagID     int32
+}
+
+func (q *Queries) CreateProductTag(ctx context.Context, arg CreateProductTagParams) error {
+	_, err := q.db.Exec(ctx, createProductTag, arg.ProductID, arg.TagID)
+	return err
+}
+
+const createProductVariant = `-- name: CreateProductVariant :exec
+INSERT INTO product_variants (product_id, size, color, stock, price_override)
+VALUES ($1, $2, $3, $4, $5)
+`
+
+type CreateProductVariantParams struct {
+	ProductID     int32
+	Size          pgtype.Text
+	Color         pgtype.Text
+	Stock         int32
+	PriceOverride pgtype.Numeric
+}
+
+func (q *Queries) CreateProductVariant(ctx context.Context, arg CreateProductVariantParams) error {
+	_, err := q.db.Exec(ctx, createProductVariant,
+		arg.ProductID,
+		arg.Size,
+		arg.Color,
+		arg.Stock,
+		arg.PriceOverride,
+	)
+	return err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (name, phone, email, role, address, password_hash, salt)
 VALUES ($1, $2, $3, 'customer', $4, $5, $6)
@@ -125,6 +226,45 @@ func (q *Queries) DeleteCategory(ctx context.Context, id int32) error {
 	return err
 }
 
+const deleteProductImage = `-- name: DeleteProductImage :exec
+DELETE FROM product_images WHERE product_id = $1 AND image_url = $2
+`
+
+type DeleteProductImageParams struct {
+	ProductID int32
+	ImageUrl  string
+}
+
+func (q *Queries) DeleteProductImage(ctx context.Context, arg DeleteProductImageParams) error {
+	_, err := q.db.Exec(ctx, deleteProductImage, arg.ProductID, arg.ImageUrl)
+	return err
+}
+
+const deleteProductTags = `-- name: DeleteProductTags :exec
+DELETE FROM product_tags WHERE product_id = $1
+`
+
+func (q *Queries) DeleteProductTags(ctx context.Context, productID int32) error {
+	_, err := q.db.Exec(ctx, deleteProductTags, productID)
+	return err
+}
+
+const deleteProductVariant = `-- name: DeleteProductVariant :exec
+DELETE FROM product_variants
+WHERE product_id = $1 AND size = $2 AND color = $3
+`
+
+type DeleteProductVariantParams struct {
+	ProductID int32
+	Size      pgtype.Text
+	Color     pgtype.Text
+}
+
+func (q *Queries) DeleteProductVariant(ctx context.Context, arg DeleteProductVariantParams) error {
+	_, err := q.db.Exec(ctx, deleteProductVariant, arg.ProductID, arg.Size, arg.Color)
+	return err
+}
+
 const emailTaken = `-- name: EmailTaken :one
 SELECT EXISTS( SELECT 1 FROM users WHERE email = $1 ) AS taken
 `
@@ -152,6 +292,35 @@ func (q *Queries) GetCategory(ctx context.Context, id int32) (Category, error) {
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getProduct = `-- name: GetProduct :one
+SELECT id, name, description, category_id, base_price::float8, is_active
+FROM products
+WHERE id = $1
+`
+
+type GetProductRow struct {
+	ID          int32
+	Name        string
+	Description pgtype.Text
+	CategoryID  int32
+	BasePrice   float64
+	IsActive    bool
+}
+
+func (q *Queries) GetProduct(ctx context.Context, id int32) (GetProductRow, error) {
+	row := q.db.QueryRow(ctx, getProduct, id)
+	var i GetProductRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.CategoryID,
+		&i.BasePrice,
+		&i.IsActive,
 	)
 	return i, err
 }
@@ -323,12 +492,213 @@ func (q *Queries) ListCategoriesWithPC(ctx context.Context) ([]ListCategoriesWit
 	return items, nil
 }
 
+const listProductImages = `-- name: ListProductImages :many
+SELECT image_url
+FROM product_images
+WHERE product_id = $1
+ORDER BY sort_order
+`
+
+func (q *Queries) ListProductImages(ctx context.Context, productID int32) ([]string, error) {
+	rows, err := q.db.Query(ctx, listProductImages, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var image_url string
+		if err := rows.Scan(&image_url); err != nil {
+			return nil, err
+		}
+		items = append(items, image_url)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProductTags = `-- name: ListProductTags :many
+SELECT t.name
+FROM tags t
+JOIN product_tags pt ON pt.tag_id = t.id
+WHERE pt.product_id = $1
+ORDER BY t.name
+`
+
+func (q *Queries) ListProductTags(ctx context.Context, productID int32) ([]string, error) {
+	rows, err := q.db.Query(ctx, listProductTags, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		items = append(items, name)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProductVariants = `-- name: ListProductVariants :many
+SELECT color, size, stock, COALESCE(price_override, 0)::float8 AS price_override
+FROM product_variants
+WHERE product_id = $1
+ORDER BY id
+`
+
+type ListProductVariantsRow struct {
+	Color         pgtype.Text
+	Size          pgtype.Text
+	Stock         int32
+	PriceOverride float64
+}
+
+func (q *Queries) ListProductVariants(ctx context.Context, productID int32) ([]ListProductVariantsRow, error) {
+	rows, err := q.db.Query(ctx, listProductVariants, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListProductVariantsRow
+	for rows.Next() {
+		var i ListProductVariantsRow
+		if err := rows.Scan(
+			&i.Color,
+			&i.Size,
+			&i.Stock,
+			&i.PriceOverride,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProducts = `-- name: ListProducts :many
+SELECT p.id, p.name, p.description, p.category_id, p.base_price::float8, p.is_active, p.created_at, c.name AS category_name,
+    COALESCE((
+        SELECT pi.image_url
+        FROM product_images pi
+        WHERE pi.product_id = p.id
+        ORDER BY pi.sort_order ASC
+        LIMIT 1
+    ), '') AS cover_image,
+    (
+        SELECT COUNT(*) FROM product_variants pv
+        WHERE pv.product_id = p.id
+    )::int AS variant_count,
+    (
+        SELECT COALESCE(SUM(pv.stock), 0) FROM product_variants pv
+        WHERE pv.product_id = p.id
+    )::int AS total_stock
+FROM products p
+JOIN categories c ON c.id = p.category_id
+WHERE ($1::text = '' OR p.name ILIKE '%' || $1::text || '%')
+  AND ($2::int = 0 OR p.category_id = $2::int)
+ORDER BY p.created_at DESC
+`
+
+type ListProductsParams struct {
+	Search   string
+	Category int32
+}
+
+type ListProductsRow struct {
+	ID           int32
+	Name         string
+	Description  pgtype.Text
+	CategoryID   int32
+	PBasePrice   float64
+	IsActive     bool
+	CreatedAt    pgtype.Timestamp
+	CategoryName string
+	CoverImage   interface{}
+	VariantCount int32
+	TotalStock   int32
+}
+
+func (q *Queries) ListProducts(ctx context.Context, arg ListProductsParams) ([]ListProductsRow, error) {
+	rows, err := q.db.Query(ctx, listProducts, arg.Search, arg.Category)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListProductsRow
+	for rows.Next() {
+		var i ListProductsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.CategoryID,
+			&i.PBasePrice,
+			&i.IsActive,
+			&i.CreatedAt,
+			&i.CategoryName,
+			&i.CoverImage,
+			&i.VariantCount,
+			&i.TotalStock,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const phoneTaken = `-- name: PhoneTaken :one
 SELECT EXISTS( SELECT 1 FROM users WHERE phone = $1 ) AS taken
 `
 
 func (q *Queries) PhoneTaken(ctx context.Context, phone string) (bool, error) {
 	row := q.db.QueryRow(ctx, phoneTaken, phone)
+	var taken bool
+	err := row.Scan(&taken)
+	return taken, err
+}
+
+const productNameTaken = `-- name: ProductNameTaken :one
+SELECT EXISTS( SELECT 1 FROM products WHERE LOWER(name) = LOWER($1) ) AS taken
+`
+
+func (q *Queries) ProductNameTaken(ctx context.Context, lower string) (bool, error) {
+	row := q.db.QueryRow(ctx, productNameTaken, lower)
+	var taken bool
+	err := row.Scan(&taken)
+	return taken, err
+}
+
+const productNameTakenForUpdate = `-- name: ProductNameTakenForUpdate :one
+SELECT EXISTS (
+    SELECT 1
+    FROM products
+    WHERE LOWER(name) = LOWER($1)
+      AND id <> $2
+) AS taken
+`
+
+type ProductNameTakenForUpdateParams struct {
+	Lower string
+	ID    int32
+}
+
+func (q *Queries) ProductNameTakenForUpdate(ctx context.Context, arg ProductNameTakenForUpdateParams) (bool, error) {
+	row := q.db.QueryRow(ctx, productNameTakenForUpdate, arg.Lower, arg.ID)
 	var taken bool
 	err := row.Scan(&taken)
 	return taken, err
@@ -401,6 +771,62 @@ func (q *Queries) UpdateCategoryWithImage(ctx context.Context, arg UpdateCategor
 	return i, err
 }
 
+const updateProduct = `-- name: UpdateProduct :one
+UPDATE products
+SET
+    name = $2,
+    description = $3,
+    category_id = $4,
+    base_price = $5,
+    is_active = $6,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, name, description, category_id, base_price::float8, is_active, created_at, updated_at
+`
+
+type UpdateProductParams struct {
+	ID          int32
+	Name        string
+	Description pgtype.Text
+	CategoryID  int32
+	BasePrice   pgtype.Numeric
+	IsActive    bool
+}
+
+type UpdateProductRow struct {
+	ID          int32
+	Name        string
+	Description pgtype.Text
+	CategoryID  int32
+	BasePrice   float64
+	IsActive    bool
+	CreatedAt   pgtype.Timestamp
+	UpdatedAt   pgtype.Timestamp
+}
+
+func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (UpdateProductRow, error) {
+	row := q.db.QueryRow(ctx, updateProduct,
+		arg.ID,
+		arg.Name,
+		arg.Description,
+		arg.CategoryID,
+		arg.BasePrice,
+		arg.IsActive,
+	)
+	var i UpdateProductRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.CategoryID,
+		&i.BasePrice,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const updateUser = `-- name: UpdateUser :one
 UPDATE users
 SET name = $2, email = $3, phone = $4, address = $5, updated_at = now()
@@ -447,4 +873,43 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (UpdateU
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const upsertProductVariant = `-- name: UpsertProductVariant :exec
+INSERT INTO product_variants (product_id, size, color, stock, price_override)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (product_id, size, color)
+DO UPDATE SET stock = EXCLUDED.stock, price_override = EXCLUDED.price_override
+`
+
+type UpsertProductVariantParams struct {
+	ProductID     int32
+	Size          pgtype.Text
+	Color         pgtype.Text
+	Stock         int32
+	PriceOverride pgtype.Numeric
+}
+
+func (q *Queries) UpsertProductVariant(ctx context.Context, arg UpsertProductVariantParams) error {
+	_, err := q.db.Exec(ctx, upsertProductVariant,
+		arg.ProductID,
+		arg.Size,
+		arg.Color,
+		arg.Stock,
+		arg.PriceOverride,
+	)
+	return err
+}
+
+const upsertTag = `-- name: UpsertTag :one
+INSERT INTO tags (name) VALUES ($1)
+ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+RETURNING id
+`
+
+func (q *Queries) UpsertTag(ctx context.Context, name string) (int32, error) {
+	row := q.db.QueryRow(ctx, upsertTag, name)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
 }

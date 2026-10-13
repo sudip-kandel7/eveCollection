@@ -1,0 +1,39 @@
+package components
+
+templ ProductErrors(errs map[string]string) {
+	<div id="err-pname" class="mt-1 text-xs text-red-600">
+		if msg, ok := errs["name"]; ok {
+			<p>{ msg }</p>
+		}
+	</div>
+	<div id="err-pcategory" class="mt-1 text-xs text-red-600">
+		if msg, ok := errs["category"]; ok {
+			<p>{ msg }</p>
+		}
+	</div>
+	<div id="err-pdescription" class="mt-1 text-xs text-red-600">
+		if msg, ok := errs["description"]; ok {
+			<p>{ msg }</p>
+		}
+	</div>
+	<div id="err-pprice" class="mt-1 text-xs text-red-600">
+		if msg, ok := errs["price"]; ok {
+			<p>{ msg }</p>
+		}
+	</div>
+	<div id="err-ptags" class="mt-1 text-xs text-red-600">
+		if msg, ok := errs["tags"]; ok {
+			<p>{ msg }</p>
+		}
+	</div>
+	<div id="err-variants" class="mt-1 text-xs text-red-600">
+		if msg, ok := errs["variants"]; ok {
+			<p>{ msg }</p>
+		}
+	</div>
+	<div id="err-pimages" class="mt-1 text-xs text-red-600">
+		if msg, ok := errs["images"]; ok {
+			<p>{ msg }</p>
+		}
+	</div>
+}

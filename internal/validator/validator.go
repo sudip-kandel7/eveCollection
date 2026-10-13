@@ -22,6 +22,10 @@ var (
 	DigitRX  = regexp.MustCompile(`[0-9]`)
 	SymbolRX = regexp.MustCompile(`[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]`)
 	AddressRX = regexp.MustCompile(`^[A-Za-z0-9\s,.\-\/#']+$`)
+
+	ProductNameRX = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9 &'.\-]*$`)
+	TagRX         = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9 \-]*$`)
+	VariantRX     = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9 .\-/]*$`)
 )
 
 
@@ -72,8 +76,43 @@ func NotRepeatingDigits(value string) bool {
 	first := value[0]
 	for i := 1; i < len(value); i++ {
 		if value[i] != first {
-			return true 
+			return true
 		}
 	}
-	return false 
+	return false
+}
+
+func MaxFloat(value float64, max float64) bool {
+	return value <= max
+}
+
+func PositiveFloat(value float64) bool {
+	return value > 0
+}
+
+func NonNegativeFloat(value float64) bool {
+	return value >= 0
+}
+
+func MaxInt(value int, max int) bool {
+	return value <= max
+}
+
+func PositiveInt(value int) bool {
+	return value > 0
+}
+
+func HasDuplicatePair(rows [][]string) bool {
+	seen := make(map[string]bool, len(rows))
+	for _, row := range rows {
+		key := ""
+		for _, part := range row {
+			key += strings.ToLower(strings.TrimSpace(part)) + "\x00"
+		}
+		if seen[key] {
+			return true
+		}
+		seen[key] = true
+	}
+	return false
 }

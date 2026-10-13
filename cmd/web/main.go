@@ -19,6 +19,7 @@ import (
 
 type Application struct {
 	logger *slog.Logger
+	pool   *pgxpool.Pool
 	queries *db.Queries
 	formDecoder    *form.Decoder
 	sessionManager *scs.SessionManager
@@ -54,6 +55,7 @@ func main() {
     
 	app := Application{
 		logger: logger, 
+		pool: conn,
 		queries: db.New(conn),
 		formDecoder: formDecoder,
 		sessionManager: sessionManager,

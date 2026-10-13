@@ -42,7 +42,7 @@ func Head(title string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</title><link rel=\"icon\" type=\"image/svg\" href=\"/static/public/pic.svg\"><link rel=\"stylesheet\" href=\"/static/style.css\"><script type=\"module\" src=\"/static/datastar.js\" defer></script></head>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</title><link rel=\"icon\" type=\"image/svg\" href=\"/static/public/pic.svg\"><link rel=\"stylesheet\" href=\"/static/style.css\"><script type=\"module\" src=\"/static/datastar.js\" defer></script><script src=\"/static/dashboard.js\" defer></script></head>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

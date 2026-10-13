@@ -14,8 +14,8 @@ func textOrEmpty(t pgtype.Text) string {
 	return t.String
 }
 
-templ dashboard(user *db.User, tab string, categories []db.ListCategoriesWithPCRow) {
-	<div class="mx-auto flex h-screen w-full" data-signals:activetab={"'" + tab + "'"}>
+templ dashboard(user *db.User, tab string, categories []db.ListCategoriesWithPCRow, products []db.ListProductsRow) {
+	<div class="mx-auto flex min-h-screen w-full" data-signals:activetab={"'" + tab + "'"}>
 		<aside class="w-64 shrink-0 border-r border-gray-200 bg-white">
 			<div class="px-6 py-8">
 				<h2 class="text-lg font-semibold text-gray-900">My Account</h2>
@@ -35,7 +35,7 @@ templ dashboard(user *db.User, tab string, categories []db.ListCategoriesWithPCR
 			@OverviewContent(user)
 			@OrdersAdminContent()
 			@CategoryAdminContent(categories)
-			@ProductsAdminContent(categories)
+			@ProductsAdminContent(categories, products)
 			@MessagesAdminContent()
 			@ReviewsAdminContent()
 		</div>
@@ -78,7 +78,7 @@ templ CategoryAdminContent(categories []db.ListCategoriesWithPCRow) {
 					<div id="err-name" class="mt-1 text-xs text-red-600"></div>
 
 					<label class="mt-7 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[#DFE5DA] px-4 py-6 text-center text-xs text-[#63685F] hover:bg-[#F7F8F5]">
-						<input type="file" name="image" class="hidden" accept="image/jpeg,image/png,image/jpg" data-on:change="$catimage = evt.target.files[0]?.name || ''; $catpreview = evt.target.files[0] ? URL.createObjectURL(evt.target.files[0]) : ''"
+						<input type="file" name="image" class="hidden" accept="image/jpeg,image/png" data-on:change="acceptCategoryImage(evt.target) && ($catimage = evt.target.files[0].name) && ($catpreview = URL.createObjectURL(evt.target.files[0]))"
 						/>
 						<img data-attr:src="$catpreview" alt="" class="h-20 w-20 rounded-lg object-cover" data-show="$catpreview !== ''"/>
 						<span data-show="$catimage === ''">Click to upload</span>
@@ -113,7 +113,8 @@ templ CategoryAdminContent(categories []db.ListCategoriesWithPCRow) {
 						<span class="text-sm font-medium text-[#20231F]">{ c.Name }</span>
 
 						<a
-							href={ templ.URL("/admin/products?category=" + strconv.FormatInt(int64(c.ID), 10)) }
+							href="#"
+							data-on:click__prevent={ "$activetab = 'products'; $pcatfilter = '" + strconv.FormatInt(int64(c.ID), 10) + "'; $psearch = ''; @get('/admin/products/search?q=&category=" + strconv.FormatInt(int64(c.ID), 10) + "')" }
 							class="relative inline-block text-sm font-semibold text-[#283B28] transition-colors duration-200 hover:text-[#4A704A]"
 						>
 							{ fmt.Sprintf("%02d", c.ProductCount) }
@@ -163,12 +164,12 @@ templ CategoryAdminContent(categories []db.ListCategoriesWithPCRow) {
 	</section>
 }
 
-templ ProductsAdminContent(categories []db.ListCategoriesWithPCRow) {
+templ ProductsAdminContent(categories []db.ListCategoriesWithPCRow, products []db.ListProductsRow) {
 	<section
 		id="products-admin"
 		data-show="$activetab === 'products'"
-		class="px-10 py-8"
-		data-signals:pformmode="'edit'"
+		class="px-10 py-6"
+		data-signals:pformmode="'create'"
 		data-signals:productid="'0'"
 		data-signals:pname="''"
 		data-signals:pcategory="''"
@@ -176,19 +177,21 @@ templ ProductsAdminContent(categories []db.ListCategoriesWithPCRow) {
 		data-signals:pprice="''"
 		data-signals:pvisible="true"
 		data-signals:psubmitting="false"
-		data-signals:prowcount="1"
 		data-signals:psearch="''"
 		data-signals:pcatfilter="''"
 	>
 		<div class="grid grid-cols-1 gap-6 xl:grid-cols-2 items-start">
 
-			<div class="rounded-2xl border border-[#E5E8DF] bg-white p-8">
-				<span class="text-xs font-semibold uppercase tracking-wide text-[#8A9285]">Product details</span>
-				<h2 class="mt-1 text-2xl font-bold tracking-tight text-[#20231F]" data-text="$pformmode === 'create' ? 'Add a product' : 'Edit product'"></h2>
+			<div class="rounded-2xl border border-[#E5E8DF] bg-white p-6">
+				<div class="flex items-baseline justify-between">
+					<span class="text-xs font-semibold uppercase tracking-wide text-[#8A9285]">Product details</span>
+					<span class="text-xs text-[#8A9285]">* Required fields</span>
+				</div>
+				<h2 class="mt-0.5 text-xl font-bold tracking-tight text-[#20231F]" data-text="$pformmode === 'create' ? 'Add a product' : 'Edit product'"></h2>
 
 				<form
 					id="product-form"
-					class="mt-6"
+					class="mt-4 space-y-4"
 					enctype="multipart/form-data"
 					data-on:datastar-fetch.document="evt.detail.type === 'finished' && ($psubmitting = false)"
 				data-on:submit__prevent="$psubmitting = true; $pformmode === 'create' ? @post('/admin/products', {contentType: 'form'}) : @post('/admin/products/' + $productid, {contentType: 'form'})"
@@ -197,378 +200,120 @@ templ ProductsAdminContent(categories []db.ListCategoriesWithPCRow) {
 						<div>
 							<label class="mb-1.5 block text-sm font-medium text-[#20231F]">Product name <span class="text-xs text-[#8A9285]">*</span></label>
 							<input type="text" name="name" data-bind:pname
-								class="w-full rounded-xl border border-[#DFE5DA] bg-white px-3.5 py-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]"
+								class="w-full rounded-xl border border-[#DFE5DA] bg-white px-3.5 py-2 text-sm text-[#20231F] outline-none focus:border-[#283B28]"
 								placeholder="e.g. Everyday linen shirt"/>
-							<div id="err-name" class="mt-1 text-xs text-red-600"></div>
+							<div id="err-pname" class="mt-1 text-xs text-red-600"></div>
 						</div>
 						<div>
 							<label class="mb-1.5 block text-sm font-medium text-[#20231F]">Category <span class="text-xs text-[#8A9285]">*</span></label>
 							<select name="category_id" data-bind:pcategory
-								class="w-full rounded-xl border border-[#DFE5DA] bg-white px-3.5 py-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]">
+								class="w-full rounded-xl border border-[#DFE5DA] bg-white px-3.5 py-2 text-sm text-[#20231F] outline-none focus:border-[#283B28]">
 								<option value="" disabled selected>Choose a category</option>
 								for _, c := range categories {
 									<option value={ strconv.FormatInt(int64(c.ID), 10) }>{ c.Name }</option>
 								}
 							</select>
-							<div id="err-category" class="mt-1 text-xs text-red-600"></div>
+							<div id="err-pcategory" class="mt-1 text-xs text-red-600"></div>
 						</div>
 					</div>
 
-					<label class="block text-sm font-medium text-[#20231F]">Description</label>
-					<textarea name="description" rows="3" data-bind:pdescription
-						class="mt-1.5 w-full rounded-xl border border-[#DFE5DA] bg-white px-3.5 py-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]"
-						placeholder="Tell customers what makes it special..."></textarea>
-					<div id="err-description" class="mt-1 text-xs text-red-600"></div>
-
-					<div class="mt-5 grid grid-cols-[1fr_auto] items-end gap-4">
+					<div class="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_180px]">
 						<div>
-														<label class="block text-sm font-medium text-[#20231F]">Base price <span class="text-xs text-[#8A9285]">*</span></label>
-													<div class="relative mt-1.5">
-														<span class="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-sm text-[#8A9285]">Rs.</span>
-														<input type="text" name="base_price" data-bind:pprice
-															class="w-full rounded-xl border border-[#DFE5DA] bg-white py-2.5 pl-10 pr-3.5  text-sm text-[#20231F] outline-none focus:border-[#283B28]"
-															placeholder="0.00"/>
-													</div>
-													<div id="err-price" class="mt-1 text-xs text-red-600"></div>
-												</div>
+							<label class="block text-sm font-medium text-[#20231F]">Description</label>
+							<textarea name="description" rows="3" data-bind:pdescription
+								class="mt-1 w-full rounded-xl border border-[#DFE5DA] bg-white px-3.5 py-2 text-sm text-[#20231F] outline-none focus:border-[#283B28]"
+								placeholder="Tell customers what makes it special..."></textarea>
+							<div id="err-pdescription" class="mt-1 text-xs text-red-600"></div>
+						</div>
 
-						<label class="flex cursor-pointer items-center gap-2 pb-2.5 text-sm font-medium text-[#20231F]">
-							<input type="checkbox" name="is_active" data-bind:pvisible
-								class="h-4 w-4 rounded border-[#DFE5DA]"/>
-							Active
+						<div class="flex flex-col gap-3">
+							<div>
+								<label class="block text-sm font-medium text-[#20231F]">Base price <span class="text-xs text-[#8A9285]">*</span></label>
+								<div class="relative mt-1">
+									<span class="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-sm text-[#8A9285]">Rs.</span>
+									<input type="text" name="base_price" data-bind:pprice
+										class="w-full rounded-xl border border-[#DFE5DA] bg-white py-2 pl-10 pr-3.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]"
+										placeholder="0.00"/>
+								</div>
+								<div id="err-pprice" class="mt-1 text-xs text-red-600"></div>
+							</div>
+
+							<label class="flex w-fit cursor-pointer items-center gap-2 text-sm font-medium text-[#20231F]">
+								<input type="checkbox" name="is_active" data-bind:pvisible
+									class="h-4 w-4 rounded border-[#DFE5DA]"/>
+								Active
+							</label>
+						</div>
+					</div>
+
+					<div>
+						<label class="block text-sm font-medium text-[#20231F]">Tags <span class="text-xs text-[#8A9285]">*</span></label>
+						<div class="mt-1 flex flex-wrap items-center gap-2 rounded-xl border border-[#DFE5DA] bg-white px-3 py-1.5">
+							<div id="tags" class="flex flex-wrap items-center gap-2"></div>
+							<input
+								type="text"
+								id="tag-input"
+								class="min-w-[120px] flex-1 border-none p-1 text-sm text-[#20231F] outline-none"
+								placeholder="Add another tag..."
+								data-on:keydown__prevent--if="evt.key === 'Enter'"
+								data-on:keydown="evt.key === 'Enter' && addTag()"
+							/>
+							<button type="button" id="tag" title="Add tag" aria-label="Add tag"
+								data-on:click="addTag()"
+								class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F0EFE9] text-sm font-semibold leading-none text-[#283B28] transition hover:bg-[#E5E8DF]">+</button>
+						</div>
+						<div id="err-ptags" class="mt-1 text-xs text-red-600"></div>
+					</div>
+
+					<div>
+						<div class="flex items-baseline justify-between">
+							<label class="block text-sm font-medium text-[#20231F]">Product images <span class="text-xs text-[#8A9285]">*</span></label>
+							<span class="text-xs text-[#8A9285]">First image is the cover</span>
+						</div>
+						<label class="mt-1 flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-[#DFE5DA] px-3 py-2.5 text-sm text-[#63685F] hover:bg-[#F7F8F5]">
+							<input type="file" id="images-input" name="images" multiple class="hidden" accept="image/jpeg,image/png"
+								data-on:change="addProductImages(evt.target)"
+							/>
+							<span>
+								<span class="block text-sm font-medium text-[#20231F]">Upload product photos</span>
+								<span class="block text-xs text-[#8A9285]">JPG or PNG · up to 2MB each</span>
+							</span>
 						</label>
+						<div id="image-previews" class="mt-2 flex flex-wrap gap-2"></div>
+						<div id="err-pimages" class="mt-1 text-xs text-red-600"></div>
 					</div>
 
-					<label class="block text-sm font-medium text-[#20231F]">Tags <span class="text-xs text-[#8A9285]">*</span></label>
-					<div class="mt-1.5 flex flex-wrap items-center gap-2 rounded-xl border border-[#DFE5DA] bg-white px-3 py-2">
-    <input
-        type="text"
-        id="tag-input"
-        class="min-w-[120px] flex-1 border-none p-1 text-sm text-[#20231F] outline-none"
-        placeholder="Add another tag..."
-        data-on:keydown="
-            if (evt.key === 'Enter') {
-                evt.preventDefault();
-                const value = evt.target.value.trim();
-                if (!value) return;
-                const wrap = document.createElement('div');
-                wrap.className = 'flex items-center gap-2 rounded-lg bg-[#EEF2EB] px-3 py-1.5 text-sm text-[#283B28]';
-                const span = document.createElement('span');
-                span.textContent = value;
-                const hidden = document.createElement('input');
-                hidden.type = 'hidden';
-                hidden.name = 'tags[]';
-                hidden.value = value;
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.textContent = '×';
-                btn.className = 'font-bold text-[#63685F] hover:text-red-600';
-                btn.onclick = function() { wrap.remove(); };
-                wrap.appendChild(hidden);
-                wrap.appendChild(span);
-                wrap.appendChild(btn);
-                document.getElementById('tags').appendChild(wrap);
-                evt.target.value = '';
-            }
-        "
-    />
-    <button type="button" id="tag" title="Add tag" aria-label="Add tag"
-        data-on:click="
-            const input = document.getElementById('tag-input');
-            const value = input.value.trim();
-            if (!value) return;
-            const wrap = document.createElement('div');
-            wrap.className = 'flex items-center gap-2 rounded-lg bg-[#EEF2EB] px-3 py-1.5 text-sm text-[#283B28]';
-            const span = document.createElement('span');
-            span.textContent = value;
-            const hidden = document.createElement('input');
-            hidden.type = 'hidden';
-            hidden.name = 'tags[]';
-            hidden.value = value;
-            const btn2 = document.createElement('button');
-            btn2.type = 'button';
-            btn2.textContent = '×';
-            btn2.className = 'font-bold text-[#63685F] hover:text-red-600';
-            btn2.onclick = function() { wrap.remove(); };
-            wrap.appendChild(hidden);
-            wrap.appendChild(span);
-            wrap.appendChild(btn2);
-            document.getElementById('tags').appendChild(wrap);
-            input.value = '';
-        "
-        class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F0EFE9] text-sm font-semibold leading-none text-[#283B28] transition hover:bg-[#E5E8DF]">+</button>
-					</div>
-
-					<div id="tags" class="mt-3 flex flex-wrap gap-2"></div>
-
-					<div class="mt-5 flex items-baseline justify-between">
-    <label class="block text-sm font-medium text-[#20231F]">Product images <span class="text-xs text-[#8A9285]">*</span></label>
-    <span class="text-xs text-[#8A9285]">First image is the cover</span>
-					</div>
-					<label class="mt-1.5 flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-[#DFE5DA] px-4 py-4 text-sm text-[#63685F] hover:bg-[#F7F8F5]">
-    <input type="file" id="images-input" name="images" multiple class="hidden" accept="image/jpeg,image/png,image/webp"
-        data-on:change="
-            window.productImages = (window.productImages || []).concat(Array.from(evt.target.files));
-            renderProductImages();
-            evt.target.value = '';
-        "/>
-    <span>
-        <span class="block font-medium text-[#20231F]">Upload product photos</span>
-        <span class="block text-xs text-[#8A9285]">JPG, PNG or WebP · up to 2MB each</span>
-    </span>
-					</label>
-					<div id="image-previews" class="mt-3 flex flex-wrap gap-2"></div>
-					<div id="err-images" class="mt-1 text-xs text-red-600"></div>
-
-					<script>
-					function renderProductImages() {
-    var container = document.getElementById('image-previews');
-    container.innerHTML = '';
-
-    window.productImages.forEach(function (f, i) {
-        var wrap = document.createElement('div');
-        wrap.className = 'relative';
-
-        var img = document.createElement('img');
-        img.src = URL.createObjectURL(f);
-        img.className = 'h-20 w-20 rounded-xl object-cover border border-[#E5E8DF]';
-        wrap.appendChild(img);
-
-        if (i === 0) {
-            var badge = document.createElement('span');
-            badge.textContent = 'COVER';
-            badge.className = 'absolute bottom-1 left-1 rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-semibold text-white';
-            wrap.appendChild(badge);
-        }
-
-        var removeBtn = document.createElement('button');
-        removeBtn.type = 'button';
-        removeBtn.textContent = '×';
-        removeBtn.className = 'absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white hover:bg-red-600';
-        removeBtn.onclick = function () {
-            window.productImages.splice(i, 1);
-            renderProductImages();
-        };
-        wrap.appendChild(removeBtn);
-
-        container.appendChild(wrap);
-    });
-
-    var input = document.getElementById('images-input');
-       var dt = new DataTransfer();
-       window.productImages.forEach(function (f) { dt.items.add(f); });
-       input.files = dt.files;
-					}
-					</script>
 
 				
-					<div class="mt-8 border-t border-[#E5E8DF] pt-6">
-					
-    <div class="flex items-center justify-between">
-        <div>
-            <h3 class="text-sm font-semibold text-[#20231F]">
-                Variants <span class="text-xs text-[#8A9285]">*</span>
-            </h3>
-					
-            <p class="text-xs text-[#8A9285]">
-                Stock is tracked for each color and size.
-            </p>
-        </div>
-					
-        <button
-            type="button"
-            id="add-variant"
-            class="flex items-center gap-1.5 rounded-full border border-[#DFE5DA] bg-white px-4 py-2 text-sm font-medium text-[#283B28] hover:bg-[#F0EFE9]"
-        >
-            + Add variant
-        </button>
-    </div>
-					
-    <div
-        id="variants-container"
-        class="mt-4 space-y-4"
-    ></div>
-					
+					<div class="border-t border-[#E5E8DF] pt-4">
+						<div class="flex items-center justify-between">
+							<div>
+								<h3 class="text-sm font-semibold text-[#20231F]">Variants <span class="text-xs text-[#8A9285]">*</span></h3>
+								<p class="text-xs text-[#8A9285]">Stock is tracked for each color and size.</p>
+							</div>
+							<button
+								type="button"
+								id="add-variant"
+								class="flex items-center gap-1.5 rounded-full border border-[#DFE5DA] bg-white px-3.5 py-1.5 text-sm font-medium text-[#283B28] hover:bg-[#F0EFE9]"
+							>
+								+ Add variant
+							</button>
+						</div>
+						<div id="variants-container" class="mt-3 space-y-2"></div>
+						<div id="err-variants" class="mt-1 text-xs text-red-600"></div>
 					</div>
 					
-					<script>
-					(function () {
-    let variantIndex = 0;
-					
-    const container = document.getElementById('variants-container');
-    const addButton = document.getElementById('add-variant');
-					
-    function addVariant() {					
-        const index = variantIndex++;
-					
-        const row = document.createElement('div');
-					
-        row.className =
-            'variant-row rounded-xl border border-[#E5E8DF] bg-[#FBFBF9] p-4';
-					
-        row.innerHTML = `
-            <div class="flex items-center justify-between">
-					
-                <span class="variant-number text-xs font-semibold uppercase tracking-wide text-[#8A9285]">
-                    Variant ${container.children.length + 1}
-                </span>
-					
-                <button
-                    type="button"
-                    class="remove-variant text-xs font-medium text-red-500 hover:text-red-700"
-                >
-                    Remove
-                </button>
-					
-            </div>
-					
-            <div class="mt-3 grid grid-cols-4 gap-3">
-					
-                <div>
-                    <label class="mb-1 block text-xs font-medium text-[#63685F]">
-                        Color <span class="text-xs text-[#8A9285]">*</span>
-                    </label>
-					
-                    <input
-                        type="text"
-                        name="variants[${index}][color]"
-                        class="w-full rounded-lg border border-[#DFE5DA] bg-white px-2.5 py-2 text-sm text-[#20231F] outline-none focus:border-[#283B28]"
-                    />
-                </div>
-					
-                <div>
-                    <label class="mb-1 block text-xs font-medium text-[#63685F]">
-                        Size <span class="text-xs text-[#8A9285]">*</span>
-                    </label>
-					
-                    <input
-                        type="text"
-                        name="variants[${index}][size]"
-                        class="w-full rounded-lg border border-[#DFE5DA] bg-white px-2.5 py-2 text-sm text-[#20231F] outline-none focus:border-[#283B28]"
-                    />
-                </div>
-					
-                <div>
-                    <label class="mb-1 block text-xs font-medium text-[#63685F]">
-                        Stock <span class="text-xs text-[#8A9285]">*</span>
-                    </label>
-					
-                    <input
-                        type="number"
-                        min="0"
-                        name="variants[${index}][stock]"
-                        class="w-full rounded-lg border border-[#DFE5DA] bg-white px-2.5 py-2 text-sm text-[#20231F] outline-none focus:border-[#283B28]"
-                    />
-                </div>
-					
-                <div>
-                    <label class="mb-1 block text-xs font-medium text-[#63685F]">
-                        Price
-                    </label>
-					
-                    <div class="relative">
-					
-                        <span class="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-xs text-[#8A9285]">
-                            Rs.
-                        </span>
-					
-                        <input
-                            type="text"
-                            name="variants[${index}][price]"
-                            placeholder="Base"
-                            class="w-full rounded-lg border border-[#DFE5DA] bg-white py-2 pl-8 pr-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]"
-                        />
-					
-                    </div>
-                </div>
-					
-            </div>
-        `;
-					
-        container.appendChild(row);
-					
-        updateVariantNumbers();
-        updateRemoveButtons();
-    }
-					
-    function removeVariant(row) {
-					
-        row.remove();
-					
-        updateVariantNumbers();
-        updateRemoveButtons();
-    }
-					
-    function updateVariantNumbers() {
-					
-        const rows = container.querySelectorAll('.variant-row');
-					
-        rows.forEach(function (row, index) {
-					
-            const title = row.querySelector('.variant-number');
-					
-            title.textContent = 'Variant ' + (index + 1);
-        });
-    }
-					
-    function updateRemoveButtons() {
-					
-        const rows = container.children;
-					
-        const buttons =
-            container.querySelectorAll('.remove-variant');
-					
-        buttons.forEach(function (button) {
-					
-            button.style.display =
-                rows.length > 1 ? '' : 'none';
-        });
-    }
-					
-    addButton.addEventListener('click', function () {
-        addVariant();
-    });
-					
-    container.addEventListener('click', function (event) {
-					
-        const button =
-            event.target.closest('.remove-variant');
-					
-        if (!button) {
-            return;
-        }
-					
-        const row =
-            button.closest('.variant-row');
-					
-        if (row) {
-            removeVariant(row);
-        }
-    });
-					
-    addVariant();
-					
-					})();
-					</script>
             
 
-					<div class="mt-8 flex items-center justify-between border-t border-[#E5E8DF] pt-6">
-						<span class="text-xs text-[#8A9285]">* Required fields</span>
+					<div class="flex items-center justify-end border-t border-[#E5E8DF] pt-4">
 						<div class="flex gap-2">
-							<button type="button" data-show="$pformmode === 'edit'"
-								data-on:click="$pformmode = 'create'; $productid = '0'; $pname = ''; $pcategory = ''; $pdescription = ''; $pprice = ''; $pvisible = true; document.getElementById('tags').innerHTML = ''; document.getElementById('tag-input').value = ''; window.productImages = []; renderProductImages(); resetVariants()"
-								class="flex-1 whitespace-nowrap rounded-lg border border-[#DFE5DA] bg-white px-4 py-2.5 text-sm font-medium text-[#63685F] transition hover:bg-[#F0EFE9]">
+							<button type="button" data-show="$pformmode === 'edit' && !$psubmitting"
+								data-on:click="$pformmode = 'create'; $productid = '0'; $pname = ''; $pcategory = ''; $pdescription = ''; $pprice = ''; $pvisible = true; resetProductExtras()"
+								class="whitespace-nowrap rounded-lg border border-[#DFE5DA] bg-white px-4 py-2 text-sm font-medium text-[#63685F] transition hover:bg-[#F0EFE9]">
 								Cancel
 							</button>
-							<script>
-							function resetVariants() {
-								variantIndex = 0;
-								container.innerHTML = '';
-								addVariant();
-							}
-							</script>
 							<button type="submit" data-attr:disabled="$psubmitting"
-								class="flex-1 whitespace-nowrap rounded-lg bg-[#283B28] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#3C523C]"
+								class="whitespace-nowrap rounded-lg bg-[#283B28] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#3C523C]"
 								data-text="$psubmitting ? 'Saving...' : ($pformmode === 'create' ? 'Create' : 'Update')">
 							</button>
 						</div>
@@ -576,21 +321,21 @@ templ ProductsAdminContent(categories []db.ListCategoriesWithPCRow) {
 				</form>
 			</div>
 
-			<div class="rounded-2xl border border-[#E5E8DF] bg-white p-8">
+			<div class="rounded-2xl border border-[#E5E8DF] bg-white p-6">
 				<span class="text-xs font-semibold uppercase tracking-wide text-[#8A9285]">Inventory overview</span>
-				<div class="mt-1 flex items-center gap-2">
-					<h2 class="text-2xl font-bold tracking-tight text-[#20231F]">Your products</h2>
-					<span class="rounded-full bg-[#F0EFE9] px-2.5 py-0.5 text-xs font-semibold text-[#283B28]" id="product-count">0</span>
+				<div class="mt-0.5 flex items-center gap-2">
+					<h2 class="text-xl font-bold tracking-tight text-[#20231F]">Your products</h2>
+					@ProductCount(len(products))
 				</div>
 
-				<div class="mt-6 flex gap-3">
+				<div class="mt-4 flex gap-3">
 					<input type="text" data-bind:psearch
 						data-on:input__debounce.400ms="@get('/admin/products/search?q=' + $psearch + '&category=' + $pcatfilter)"
-						class="flex-1 rounded-xl border border-[#DFE5DA] bg-white px-3.5 py-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]"
+						class="flex-1 rounded-xl border border-[#DFE5DA] bg-white px-3.5 py-2 text-sm text-[#20231F] outline-none focus:border-[#283B28]"
 						placeholder="Search products"/>
 					<select data-bind:pcatfilter
 						data-on:change="@get('/admin/products/search?q=' + $psearch + '&category=' + $pcatfilter)"
-						class="rounded-xl border border-[#DFE5DA] bg-white px-3.5 py-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]">
+						class="rounded-xl border border-[#DFE5DA] bg-white px-3.5 py-2 text-sm text-[#20231F] outline-none focus:border-[#283B28]">
 						<option value="">All categories</option>
 						for _, c := range categories {
 							<option value={ strconv.FormatInt(int64(c.ID), 10) }>{ c.Name }</option>
@@ -598,8 +343,8 @@ templ ProductsAdminContent(categories []db.ListCategoriesWithPCRow) {
 					</select>
 				</div>
 
-				<div id="product-list" class="mt-6 flex min-h-[300px] flex-col items-center justify-center gap-2 rounded-xl border border-[#E5E8DF] bg-[#FBFBF9] px-6 py-16 text-center">
-					<p class="max-w-xs text-sm text-[#8A9285]">Add your first product with photos, variants, and stock details. It will appear here for you to manage.</p>
+				<div class="max-h-[62vh] overflow-y-auto pr-1">
+					@ProductsList(products)
 				</div>
 			</div>
 
@@ -607,6 +352,110 @@ templ ProductsAdminContent(categories []db.ListCategoriesWithPCRow) {
 	</section>
 }
 
+
+templ ProductCount(count int) {
+	<span id="product-count" class="rounded-full bg-[#F0EFE9] px-2.5 py-0.5 text-xs font-semibold text-[#283B28]">{ strconv.Itoa(count) }</span>
+}
+
+func priceOverrideText(v float64) string {
+	if v <= 0 {
+		return ""
+	}
+	return strconv.FormatFloat(v, 'f', 2, 64)
+}
+
+templ ProductVariantRows(variants []db.ListProductVariantsRow) {
+	for i, v := range variants {
+		<div class="variant-row rounded-xl border border-[#E5E8DF] bg-[#FBFBF9] p-3">
+			<div class="flex items-center justify-between">
+				<span class="variant-number text-xs font-semibold uppercase tracking-wide text-[#8A9285]">{ fmt.Sprintf("Variant %d", i+1) }</span>
+				<button type="button" class="remove-variant text-xs font-medium text-red-500 hover:text-red-700">Remove</button>
+			</div>
+			<div class="mt-2 grid grid-cols-4 gap-2">
+				<div>
+					<label class="mb-1 block text-xs font-medium text-[#63685F]">Color <span class="text-xs text-[#8A9285]">*</span></label>
+					<input type="text" name={ "variants[" + strconv.Itoa(i) + "].color" } value={ textOrEmpty(v.Color) } class="w-full rounded-lg border border-[#DFE5DA] bg-white px-2.5 py-1.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]"/>
+				</div>
+				<div>
+					<label class="mb-1 block text-xs font-medium text-[#63685F]">Size <span class="text-xs text-[#8A9285]">*</span></label>
+					<input type="text" name={ "variants[" + strconv.Itoa(i) + "].size" } value={ textOrEmpty(v.Size) } class="w-full rounded-lg border border-[#DFE5DA] bg-white px-2.5 py-1.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]"/>
+				</div>
+				<div>
+					<label class="mb-1 block text-xs font-medium text-[#63685F]">Stock <span class="text-xs text-[#8A9285]">*</span></label>
+					<input type="number" min="0" name={ "variants[" + strconv.Itoa(i) + "].stock" } value={ strconv.Itoa(int(v.Stock)) } class="w-full rounded-lg border border-[#DFE5DA] bg-white px-2.5 py-1.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]"/>
+				</div>
+				<div>
+					<label class="mb-1 block text-xs font-medium text-[#63685F]">Price</label>
+					<div class="relative">
+						<span class="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-xs text-[#8A9285]">Rs.</span>
+						<input type="text" name={ "variants[" + strconv.Itoa(i) + "].price" } value={ priceOverrideText(v.PriceOverride) } placeholder="Base" class="w-full rounded-lg border border-[#DFE5DA] bg-white py-1.5 pl-8 pr-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]"/>
+					</div>
+				</div>
+			</div>
+		</div>
+	}
+}
+
+templ ProductTagChips(tags []string) {
+	for _, name := range tags {
+		<div class="flex items-center gap-2 rounded-lg bg-[#EEF2EB] px-2.5 py-1 text-xs text-[#283B28]">
+			<input type="hidden" name="tags[]" value={ name }/>
+			<span>{ name }</span>
+			<button type="button" class="font-bold text-[#63685F] hover:text-red-600" data-on:click="evt.target.parentElement.remove()">×</button>
+		</div>
+	}
+}
+
+templ ProductsList(products []db.ListProductsRow) {
+	<div id="product-list" class="mt-6 flex flex-col gap-2">
+		if len(products) == 0 {
+			<div class="rounded-xl border border-dashed border-[#DFE5DA] p-10 text-center text-sm text-[#63685F]">
+				Add your first product with photos, variants, and stock details.
+			</div>
+		} else {
+			for _, p := range products {
+				<div
+					data-attr:class={ "$productid === " + strconv.FormatInt(int64(p.ID), 10) + " ? 'group grid grid-cols-[40px_1fr_90px_90px_90px] items-center gap-3 rounded-xl border-2 border-[#283B28] bg-[#F7F8F5] p-3 transition hover:-translate-y-0.5 hover:shadow-md' : 'group grid grid-cols-[40px_1fr_90px_90px_90px] items-center gap-3 rounded-xl border-2 border-[#E5E8DF] bg-white p-3 transition hover:-translate-y-0.5 hover:shadow-md'" }
+				>
+					if img, ok := p.CoverImage.(string); ok && img != "" {
+						<img src={ img } alt="" class="h-8 w-8 rounded-lg object-cover bg-[#F0EFE9]"/>
+					} else {
+						<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F0EFE9] text-[9px] font-semibold text-[#8A9285]">
+							N/A
+						</div>
+					}
+
+					<div class="min-w-0">
+						<p class="truncate text-sm font-medium text-[#20231F]">{ p.Name }</p>
+						<p class="truncate text-xs text-[#8A9285]">{ p.CategoryName }</p>
+					</div>
+
+					<span class="text-sm font-semibold text-[#283B28]">{ fmt.Sprintf("%02d", p.TotalStock) }</span>
+
+					if p.IsActive {
+						<span class="w-fit rounded-full bg-[#E7F3E5] px-2.5 py-0.5 text-xs font-medium text-[#2E6B33]">Active</span>
+					} else {
+						<span class="w-fit rounded-full bg-[#FBE9E7] px-2.5 py-0.5 text-xs font-medium text-[#B3392C]">Hidden</span>
+					}
+
+					<div class="flex gap-1.5">
+						<button
+							type="button"
+							data-on:click={ "@get('/admin/products/" + strconv.FormatInt(int64(p.ID), 10) + "/edit')" }
+							class="rounded-lg border border-[#DFE5DA] p-1.5 text-[#63685F] hover:bg-[#F0EFE9]"
+						>
+							<img src="/static/public/edit.png" alt="Edit" class="h-4 w-4 transition-transform duration-150 ease-out hover:scale-125"/>
+						</button>
+
+						<button type="button" disabled title="Product delete is not wired up yet" class="cursor-not-allowed rounded-lg border border-[#E5E8DF] p-1.5">
+							<img src="/static/public/delete.png" alt="Delete (disabled)" class="h-4 w-4 opacity-30"/>
+						</button>
+					</div>
+				</div>
+			}
+		}
+	</div>
+}
 
 templ OrdersAdminContent() {
 	<section data-show="$activetab === 'orders'" class="px-10 py-8">
@@ -629,8 +478,8 @@ templ ReviewsAdminContent() {
 	</section>
 }
 
-templ DashboardRenderer(user *db.User, tab string, categories []db.ListCategoriesWithPCRow) {
+templ DashboardRenderer(user *db.User, tab string, categories []db.ListCategoriesWithPCRow, products []db.ListProductsRow) {
 	@Html("Dashboard", user){
-		@dashboard(user, tab, categories)
+		@dashboard(user, tab, categories, products)
 	}
 }

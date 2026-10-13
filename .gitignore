@@ -1,2 +1,4 @@
 .env
-pg.txt
+pg.txttmp/
+web
+uploads/

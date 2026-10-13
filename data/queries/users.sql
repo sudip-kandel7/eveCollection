@@ -83,3 +83,111 @@ RETURNING id, name, image_url, is_active, created_at, updated_at;
 -- name: DeleteCategory :exec
 DELETE FROM categories WHERE id = $1;
 
+
+-- name: ProductNameTaken :one
+SELECT EXISTS( SELECT 1 FROM products WHERE LOWER(name) = LOWER($1) ) AS taken;
+
+-- name: ProductNameTakenForUpdate :one
+SELECT EXISTS (
+    SELECT 1
+    FROM products
+    WHERE LOWER(name) = LOWER($1)
+      AND id <> $2
+) AS taken;
+
+-- name: UpdateProduct :one
+UPDATE products
+SET
+    name = $2,
+    description = $3,
+    category_id = $4,
+    base_price = $5,
+    is_active = $6,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, name, description, category_id, base_price::float8, is_active, created_at, updated_at;
+
+-- name: UpsertProductVariant :exec
+INSERT INTO product_variants (product_id, size, color, stock, price_override)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (product_id, size, color)
+DO UPDATE SET stock = EXCLUDED.stock, price_override = EXCLUDED.price_override;
+
+-- name: DeleteProductVariant :exec
+DELETE FROM product_variants
+WHERE product_id = $1 AND size = $2 AND color = $3;
+
+-- name: DeleteProductTags :exec
+DELETE FROM product_tags WHERE product_id = $1;
+
+-- name: DeleteProductImage :exec
+DELETE FROM product_images WHERE product_id = $1 AND image_url = $2;
+
+-- name: CreateProduct :one
+INSERT INTO products (name, description, category_id, base_price, is_active)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, name, description, category_id, base_price::float8, is_active, created_at, updated_at;
+
+-- name: CreateProductVariant :exec
+INSERT INTO product_variants (product_id, size, color, stock, price_override)
+VALUES ($1, $2, $3, $4, $5);
+
+-- name: CreateProductImage :exec
+INSERT INTO product_images (product_id, image_url, sort_order)
+VALUES ($1, $2, $3);
+
+-- name: UpsertTag :one
+INSERT INTO tags (name) VALUES ($1)
+ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+RETURNING id;
+
+-- name: CreateProductTag :exec
+INSERT INTO product_tags (product_id, tag_id) VALUES ($1, $2);
+
+-- name: GetProduct :one
+SELECT id, name, description, category_id, base_price::float8, is_active
+FROM products
+WHERE id = $1;
+
+-- name: ListProductVariants :many
+SELECT color, size, stock, COALESCE(price_override, 0)::float8 AS price_override
+FROM product_variants
+WHERE product_id = $1
+ORDER BY id;
+
+-- name: ListProductTags :many
+SELECT t.name
+FROM tags t
+JOIN product_tags pt ON pt.tag_id = t.id
+WHERE pt.product_id = $1
+ORDER BY t.name;
+
+-- name: ListProductImages :many
+SELECT image_url
+FROM product_images
+WHERE product_id = $1
+ORDER BY sort_order;
+
+-- name: ListProducts :many
+SELECT p.id, p.name, p.description, p.category_id, p.base_price::float8, p.is_active, p.created_at, c.name AS category_name,
+    COALESCE((
+        SELECT pi.image_url
+        FROM product_images pi
+        WHERE pi.product_id = p.id
+        ORDER BY pi.sort_order ASC
+        LIMIT 1
+    ), '') AS cover_image,
+    (
+        SELECT COUNT(*) FROM product_variants pv
+        WHERE pv.product_id = p.id
+    )::int AS variant_count,
+    (
+        SELECT COALESCE(SUM(pv.stock), 0) FROM product_variants pv
+        WHERE pv.product_id = p.id
+    )::int AS total_stock
+FROM products p
+JOIN categories c ON c.id = p.category_id
+WHERE (sqlc.arg('search')::text = '' OR p.name ILIKE '%' || sqlc.arg('search')::text || '%')
+  AND (sqlc.arg('category')::int = 0 OR p.category_id = sqlc.arg('category')::int)
+ORDER BY p.created_at DESC;
+
