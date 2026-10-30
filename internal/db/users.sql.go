@@ -830,6 +830,47 @@ func (q *Queries) ProductNameTakenForUpdate(ctx context.Context, arg ProductName
 	return taken, err
 }
 
+const recordProductCart = `-- name: RecordProductCart :exec
+INSERT INTO product_stats (product_id, day, carts)
+VALUES ($1, CURRENT_DATE, 1)
+ON CONFLICT (product_id, day)
+DO UPDATE SET carts = product_stats.carts + 1
+`
+
+func (q *Queries) RecordProductCart(ctx context.Context, productID int32) error {
+	_, err := q.db.Exec(ctx, recordProductCart, productID)
+	return err
+}
+
+const recordProductPurchase = `-- name: RecordProductPurchase :exec
+INSERT INTO product_stats (product_id, day, purchases)
+VALUES ($1, CURRENT_DATE, $2)
+ON CONFLICT (product_id, day)
+DO UPDATE SET purchases = product_stats.purchases + $2
+`
+
+type RecordProductPurchaseParams struct {
+	ProductID int32
+	Purchases int32
+}
+
+func (q *Queries) RecordProductPurchase(ctx context.Context, arg RecordProductPurchaseParams) error {
+	_, err := q.db.Exec(ctx, recordProductPurchase, arg.ProductID, arg.Purchases)
+	return err
+}
+
+const recordProductView = `-- name: RecordProductView :exec
+INSERT INTO product_stats (product_id, day, views)
+VALUES ($1, CURRENT_DATE, 1)
+ON CONFLICT (product_id, day)
+DO UPDATE SET views = product_stats.views + 1
+`
+
+func (q *Queries) RecordProductView(ctx context.Context, productID int32) error {
+	_, err := q.db.Exec(ctx, recordProductView, productID)
+	return err
+}
+
 const updateCategory = `-- name: UpdateCategory :one
 UPDATE categories
 SET

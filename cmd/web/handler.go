@@ -1634,4 +1634,6 @@ func (app *Application) ProductDetails(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprintf(w, "Product ID: %s", id)
 
+	
+
 }

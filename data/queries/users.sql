@@ -228,3 +228,23 @@ ORDER BY
     CASE WHEN sqlc.arg('sort')::text = 'Price: high to low' THEN price END DESC,
     CASE WHEN sqlc.arg('sort')::text = 'Top rated'          THEN rating END DESC,
     created_at DESC;
+
+
+
+-- name: RecordProductView :exec
+INSERT INTO product_stats (product_id, day, views)
+VALUES ($1, CURRENT_DATE, 1)
+ON CONFLICT (product_id, day)
+DO UPDATE SET views = product_stats.views + 1;
+
+-- name: RecordProductCart :exec
+INSERT INTO product_stats (product_id, day, carts)
+VALUES ($1, CURRENT_DATE, 1)
+ON CONFLICT (product_id, day)
+DO UPDATE SET carts = product_stats.carts + 1;
+
+-- name: RecordProductPurchase :exec
+INSERT INTO product_stats (product_id, day, purchases)
+VALUES ($1, CURRENT_DATE, $2)
+ON CONFLICT (product_id, day)
+DO UPDATE SET purchases = product_stats.purchases + $2;

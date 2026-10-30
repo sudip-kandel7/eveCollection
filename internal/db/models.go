@@ -95,11 +95,11 @@ type ProductReview struct {
 }
 
 type ProductStat struct {
-	ProductID         int32
-	ViewCount         int32
-	CartCount         int32
-	PurchaseCount     int32
-	LastInteractionAt pgtype.Timestamp
+	ProductID int32
+	Day       pgtype.Date
+	Views     int32
+	Carts     int32
+	Purchases int32
 }
 
 type ProductTag struct {
