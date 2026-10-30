@@ -492,6 +492,52 @@ func (q *Queries) ListCategoriesWithPC(ctx context.Context) ([]ListCategoriesWit
 	return items, nil
 }
 
+const listCategoriesWithProducts = `-- name: ListCategoriesWithProducts :many
+SELECT c.id, c.name, c.image_url, c.is_active, c.created_at, c.updated_at, COUNT(p.id) AS product_count
+FROM categories c
+JOIN products p ON p.category_id = c.id AND p.is_active = TRUE
+GROUP BY c.id, c.name, c.image_url, c.is_active, c.created_at, c.updated_at
+ORDER BY c.name
+`
+
+type ListCategoriesWithProductsRow struct {
+	ID           int32
+	Name         string
+	ImageUrl     pgtype.Text
+	IsActive     bool
+	CreatedAt    pgtype.Timestamp
+	UpdatedAt    pgtype.Timestamp
+	ProductCount int64
+}
+
+func (q *Queries) ListCategoriesWithProducts(ctx context.Context) ([]ListCategoriesWithProductsRow, error) {
+	rows, err := q.db.Query(ctx, listCategoriesWithProducts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCategoriesWithProductsRow
+	for rows.Next() {
+		var i ListCategoriesWithProductsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ImageUrl,
+			&i.IsActive,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ProductCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listProductImages = `-- name: ListProductImages :many
 SELECT image_url
 FROM product_images
@@ -650,6 +696,86 @@ func (q *Queries) ListProducts(ctx context.Context, arg ListProductsParams) ([]L
 			&i.CoverImage,
 			&i.VariantCount,
 			&i.TotalStock,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProductsCard = `-- name: ListProductsCard :many
+WITH cards AS (
+    SELECT p.id, p.name, c.name AS category_name, p.category_id, p.created_at,
+        p.base_price::float8 AS price,
+        COALESCE((SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.sort_order ASC LIMIT 1), '') AS cover_image,
+        COALESCE((SELECT AVG(pr.rating) FROM product_reviews pr WHERE pr.product_id = p.id), 0)::float8 AS rating,
+        (SELECT COUNT(*) FROM product_reviews pr WHERE pr.product_id = p.id)::int AS review_count,
+        COALESCE((SELECT SUM(oi.quantity) FROM order_items oi JOIN product_variants pv ON pv.id = oi.variant_id JOIN orders o ON o.id = oi.order_id WHERE pv.product_id = p.id AND o.status = 'delivered'), 0)::int AS sold,
+        COALESCE((SELECT SUM(pv.stock) FROM product_variants pv WHERE pv.product_id = p.id), 0)::int AS stock,
+        LOWER(
+            p.name || ' ' || c.name || ' ' ||
+            COALESCE((SELECT string_agg(t.name, ' ') FROM product_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.product_id = p.id), '') || ' ' ||
+            COALESCE((SELECT string_agg(DISTINCT pv.color, ' ') FROM product_variants pv WHERE pv.product_id = p.id), '')
+        ) AS search_text
+    FROM products p
+    JOIN categories c ON c.id = p.category_id
+    WHERE p.is_active = TRUE AND c.is_active = TRUE
+)
+SELECT id, name, category_name, price, cover_image, rating, review_count, sold, stock
+FROM cards
+WHERE ($1::int = 0 OR category_id = $1::int)
+  AND NOT EXISTS (
+      SELECT 1 FROM unnest($2::text[]) AS term
+      WHERE search_text NOT LIKE '%' || term || '%'
+  )
+ORDER BY
+    CASE WHEN $3::text = 'Price: low to high' THEN price END ASC,
+    CASE WHEN $3::text = 'Price: high to low' THEN price END DESC,
+    CASE WHEN $3::text = 'Top rated'          THEN rating END DESC,
+    created_at DESC
+`
+
+type ListProductsCardParams struct {
+	Category int32
+	Terms    []string
+	Sort     string
+}
+
+type ListProductsCardRow struct {
+	ID           int32
+	Name         string
+	CategoryName string
+	Price        float64
+	CoverImage   interface{}
+	Rating       float64
+	ReviewCount  int32
+	Sold         int32
+	Stock        int32
+}
+
+func (q *Queries) ListProductsCard(ctx context.Context, arg ListProductsCardParams) ([]ListProductsCardRow, error) {
+	rows, err := q.db.Query(ctx, listProductsCard, arg.Category, arg.Terms, arg.Sort)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListProductsCardRow
+	for rows.Next() {
+		var i ListProductsCardRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.CategoryName,
+			&i.Price,
+			&i.CoverImage,
+			&i.Rating,
+			&i.ReviewCount,
+			&i.Sold,
+			&i.Stock,
 		); err != nil {
 			return nil, err
 		}

@@ -59,17 +59,76 @@ type profileForm struct {
 func (app *Application) Home(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r)
 
-	component := views.IndexRenderer(user)
+	categories, err := app.queries.ListCategoriesWithProducts(r.Context())
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
 
-	err := component.Render(r.Context(), w)
+	productsCard, err := app.queries.ListProductsCard(r.Context(), db.ListProductsCardParams{
+		Category: 0,
+		Terms:    []string{},
+		Sort:     "Featured",
+	})
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	component := views.IndexRenderer(user, categories, productsCard)
+
+	err = component.Render(r.Context(), w)
 	if err != nil {
 		app.serverError(w, r, err)
 	}
 }
 
+func (app *Application) ProductsFilter(w http.ResponseWriter, r *http.Request) {
+
+	fmt.Println("got request")
+
+	var s struct {
+		Cat    string `json:"cat"`
+		Sort   string `json:"sort"`
+		Search string `json:"search"`
+	}
+
+	if err := datastar.ReadSignals(r, &s); err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	catID, _ := strconv.Atoi(s.Cat)
+
+	terms := []string{}
+	if search := strings.ToLower(strings.TrimSpace(s.Search)); search != "" {
+		terms = strings.Fields(search)
+	}
+
+	productCard, err := app.queries.ListProductsCard(r.Context(), db.ListProductsCardParams{
+		Category: int32(catID),
+		Terms:    terms,
+		Sort:     s.Sort,
+	})
+
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r)
+	sse.PatchElementTempl(views.ProductGrid(productCard))
+
+}
+
 func (app *Application) Profile(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r)
 	views.ProfileRenderer(user, "profile").Render(r.Context(), w)
+}
+
+func (app *Application) About(w http.ResponseWriter, r *http.Request) {
+	user := app.contextGetUser(r)
+	views.AboutRenderer(user).Render(r.Context(), w)
 }
 
 func (app *Application) Orders(w http.ResponseWriter, r *http.Request) {
@@ -985,8 +1044,6 @@ func numericFromFloat(value float64) (pgtype.Numeric, error) {
 	return n, err
 }
 
-// validateProduct runs every create/update validation shared by both flows.
-// When isUpdate is true the name uniqueness check ignores the product itself.
 func (app *Application) validateProduct(r *http.Request, form *ProductForm, productID int32, isUpdate bool) (parsedProduct, error) {
 	var out parsedProduct
 
@@ -1570,4 +1627,11 @@ func (app *Application) EditProductForm(w http.ResponseWriter, r *http.Request) 
 	sse.PatchElementTempl(views.ProductVariantRows(variants), datastar.WithSelectorID("variants-container"), datastar.WithModeInner())
 	sse.PatchElementTempl(views.ProductTagChips(tags), datastar.WithSelectorID("tags"), datastar.WithModeInner())
 	sse.ExecuteScript("setExistingImages(" + string(imageURLs) + "); syncVariantIndex()")
+}
+
+func (app *Application) ProductDetails(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+
+	fmt.Fprintf(w, "Product ID: %s", id)
+
 }

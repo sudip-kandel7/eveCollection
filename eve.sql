@@ -60,11 +60,12 @@ CREATE TABLE product_images (
 );
 
 CREATE TABLE product_stats (
-    product_id           INTEGER PRIMARY KEY REFERENCES products(id) ON DELETE CASCADE,
-    view_count           INTEGER NOT NULL DEFAULT 0,
-    cart_count            INTEGER NOT NULL DEFAULT 0,
-    purchase_count        INTEGER NOT NULL DEFAULT 0,
-    last_interaction_at   TIMESTAMP NOT NULL DEFAULT NOW()
+    product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+    day        DATE NOT NULL,
+    views      INTEGER NOT NULL DEFAULT 0,
+    carts      INTEGER NOT NULL DEFAULT 0,
+    purchases  INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (product_id, day)
 );
 
 CREATE TABLE tags (

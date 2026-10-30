@@ -1,1 +1,17 @@
 @import "tailwindcss";
+
+/* Category filters: a small slide/fade while the panel expands. */
+.category-panel {
+  max-height: 0;
+  margin-top: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateY(-6px);
+  transition: max-height 220ms ease, margin-top 220ms ease, opacity 180ms ease, transform 220ms ease;
+}
+.category-panel.is-open {
+  max-height: 400px;
+  margin-top: 1.5rem;
+  opacity: 1;
+  transform: translateY(0);
+}

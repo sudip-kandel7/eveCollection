@@ -1,0 +1,75 @@
+package components
+
+import (
+	"strconv"
+	"time"
+)
+
+templ Footer() {
+	<footer class="border-t border-[#E2E8DB] bg-white" style="font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;">
+		<div class="mx-auto max-w-7xl px-5 py-12 sm:px-8 sm:py-14">
+			<div class="flex flex-col gap-10 lg:flex-row lg:items-start lg:justify-between">
+				<div class="max-w-sm">
+					<a href="/" class="flex items-center gap-2.5">
+						<img src="/static/public/pic.svg" alt="" class="h-10 w-10 rounded-full"/>
+						<span class="text-lg font-semibold text-[#20231F]">
+							eve
+							<span class="relative -top-1 text-xs text-[#638154]">|Collection</span>
+						</span>
+					</a>
+					<p class="mt-4 max-w-[280px] text-sm leading-relaxed text-[#687064]">
+						Clothes that fit your life, from daily wear to something special.
+					</p>
+				</div>
+
+				<div class="w-full max-w-md">
+					<p class="text-lg font-semibold text-[#20231F]">Visit or call</p>
+					<div class="mt-4 space-y-3 text-sm">
+						<div class="flex items-start gap-3">
+							<span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F1F4EC] text-[#5B744E]">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4" aria-hidden="true">
+									<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"></path>
+								</svg>
+							</span>
+							<div>
+								<p class="text-[11px] font-semibold uppercase tracking-wide text-[#7A8374]">Phone</p>
+								<a href="tel:+9779800000000" class="mt-0.5 block font-medium text-[#283B28] transition hover:text-[#5B744E]">+977 9800000000</a>
+							</div>
+						</div>
+						<div class="flex items-start gap-3">
+							<span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F1F4EC] text-[#5B744E]">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4" aria-hidden="true">
+									<path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0z"></path>
+									<circle cx="12" cy="10" r="2.5"></circle>
+								</svg>
+							</span>
+							<div>
+								<p class="text-[11px] font-semibold uppercase tracking-wide text-[#7A8374]">Address</p>
+								<p class="mt-0.5 font-medium text-[#283B28]">Bharatpur, Nepal</p>
+							</div>
+						</div>
+						<div class="flex items-start gap-3">
+							<span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F1F4EC] text-[#5B744E]">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4" aria-hidden="true">
+									<circle cx="12" cy="12" r="9"></circle>
+									<path d="M12 7v5l3 2"></path>
+								</svg>
+							</span>
+							<div>
+								<p class="text-[11px] font-semibold uppercase tracking-wide text-[#7A8374]">Visiting hours</p>
+								<p class="mt-0.5 font-medium text-[#283B28]">Sun–Fri · 10:00 AM – 5:00 PM</p>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="mt-10 flex flex-col gap-5 border-t border-[#DCE4D4] pt-6 sm:flex-row sm:items-center sm:justify-between">
+				<p class="text-xs text-[#7A8374]">
+					© { strconv.Itoa(time.Now().Year()) } Eve Collection. All rights reserved.
+				</p>
+				@SocialLinks()
+			</div>
+		</div>
+	</footer>
+}

@@ -39,6 +39,13 @@ RETURNING id, name, email, phone, address, role, created_at, updated_at;
 -- name: ListCategoriesWithPC :many
 SELECT c.id, c.name, c.image_url, c.is_active, c.created_at, c.updated_at, COUNT(p.id) AS product_count FROM categories c LEFT JOIN products p ON p.category_id = c.id GROUP BY c.id, c.name, c.image_url, c.is_active, c.created_at, c.updated_at ORDER BY c.name; 
 
+-- name: ListCategoriesWithProducts :many
+SELECT c.id, c.name, c.image_url, c.is_active, c.created_at, c.updated_at, COUNT(p.id) AS product_count
+FROM categories c
+JOIN products p ON p.category_id = c.id AND p.is_active = TRUE
+GROUP BY c.id, c.name, c.image_url, c.is_active, c.created_at, c.updated_at
+ORDER BY c.name;
+
 -- name: CategoryNameTaken :one
 SELECT EXISTS( SELECT 1 FROM categories WHERE name = $1 ) AS taken;
 
@@ -191,3 +198,33 @@ WHERE (sqlc.arg('search')::text = '' OR p.name ILIKE '%' || sqlc.arg('search')::
   AND (sqlc.arg('category')::int = 0 OR p.category_id = sqlc.arg('category')::int)
 ORDER BY p.created_at DESC;
 
+-- name: ListProductsCard :many
+WITH cards AS (
+    SELECT p.id, p.name, c.name AS category_name, p.category_id, p.created_at,
+        p.base_price::float8 AS price,
+        COALESCE((SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.sort_order ASC LIMIT 1), '') AS cover_image,
+        COALESCE((SELECT AVG(pr.rating) FROM product_reviews pr WHERE pr.product_id = p.id), 0)::float8 AS rating,
+        (SELECT COUNT(*) FROM product_reviews pr WHERE pr.product_id = p.id)::int AS review_count,
+        COALESCE((SELECT SUM(oi.quantity) FROM order_items oi JOIN product_variants pv ON pv.id = oi.variant_id JOIN orders o ON o.id = oi.order_id WHERE pv.product_id = p.id AND o.status = 'delivered'), 0)::int AS sold,
+        COALESCE((SELECT SUM(pv.stock) FROM product_variants pv WHERE pv.product_id = p.id), 0)::int AS stock,
+        LOWER(
+            p.name || ' ' || c.name || ' ' ||
+            COALESCE((SELECT string_agg(t.name, ' ') FROM product_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.product_id = p.id), '') || ' ' ||
+            COALESCE((SELECT string_agg(DISTINCT pv.color, ' ') FROM product_variants pv WHERE pv.product_id = p.id), '')
+        ) AS search_text
+    FROM products p
+    JOIN categories c ON c.id = p.category_id
+    WHERE p.is_active = TRUE AND c.is_active = TRUE
+)
+SELECT id, name, category_name, price, cover_image, rating, review_count, sold, stock
+FROM cards
+WHERE (sqlc.arg('category')::int = 0 OR category_id = sqlc.arg('category')::int)
+  AND NOT EXISTS (
+      SELECT 1 FROM unnest(sqlc.arg('terms')::text[]) AS term
+      WHERE search_text NOT LIKE '%' || term || '%'
+  )
+ORDER BY
+    CASE WHEN sqlc.arg('sort')::text = 'Price: low to high' THEN price END ASC,
+    CASE WHEN sqlc.arg('sort')::text = 'Price: high to low' THEN price END DESC,
+    CASE WHEN sqlc.arg('sort')::text = 'Top rated'          THEN rating END DESC,
+    created_at DESC;

@@ -3,14 +3,15 @@ package views
 import "github.com/sudip-kandel7/eveCollection/views/components"
 import "github.com/sudip-kandel7/eveCollection/internal/db"
 
-templ Html(title string, user *db.User) {
+templ Html(title string, user *db.User, active string) {
 	<html>
 		@components.Head(title)
-		<body class="bg-[#F7F8F5]">
-			@components.Nav(user)
-			<main id="main">
+		<body class="flex min-h-screen flex-col bg-[#F7F8F5]">
+			@components.Nav(user, active)
+			<main id="main" class="flex flex-1 flex-col">
 				{ children... }
 			</main>
+			@components.Footer()
 		</body>
 	</html>
 }

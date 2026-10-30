@@ -12,7 +12,9 @@ func (app *Application) routes() http.Handler {
 	mux.Handle("GET /static/", noStore(http.FileServerFS(views.Files)))
 	mux.Handle("GET /uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
 
-	mux.HandleFunc("GET /", app.Home)
+	mux.HandleFunc("GET /{$}", app.Home)
+
+	mux.HandleFunc("GET /about", app.About)
 
 	mux.HandleFunc("GET /login", app.Login)
 	mux.HandleFunc("POST /login", app.Signin)
@@ -41,6 +43,10 @@ func (app *Application) routes() http.Handler {
 	mux.Handle("POST /admin/products/{id}", app.requireAdmin(http.HandlerFunc(app.UpdateProduct)))
 	mux.Handle("GET /admin/products/search", app.requireAdmin(http.HandlerFunc(app.SearchProducts)))
 	mux.Handle("GET /admin/products/{id}/edit", app.requireAdmin(http.HandlerFunc(app.EditProductForm)))
+
+	mux.Handle("GET /products/{id}", http.HandlerFunc(app.ProductDetails))
+
+	mux.Handle("GET /products/filter", http.HandlerFunc(app.ProductsFilter))
 
 	return mux
 

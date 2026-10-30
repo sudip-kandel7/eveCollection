@@ -41,20 +41,20 @@ func profile(user *db.User, tab string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"mx-auto flex h-screen w-full\" data-signals:activetab=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"mx-auto flex w-full flex-1 flex-col lg:flex-row\" data-signals:activetab=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue("'" + tab + "'")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 16, Col: 83}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 16, Col: 102}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\"><aside class=\"w-64 shrink-0 border-r border-gray-200 bg-white\"><div class=\"px-6 py-8\"><h2 class=\"text-lg font-semibold text-gray-900\">My Account</h2><p class=\"mt-1 text-sm text-gray-500\">Manage your account</p></div><nav class=\"px-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\"><aside class=\"w-full shrink-0 border-b border-gray-200 bg-white lg:w-64 lg:border-b-0 lg:border-r\"><div class=\"px-4 py-4 sm:px-6 sm:py-6 lg:px-6 lg:py-8\"><h2 class=\"text-lg font-semibold text-gray-900\">My Account</h2><p class=\"mt-1 text-sm text-gray-500\">Manage your account</p></div><nav class=\"flex flex-wrap gap-2 px-3 pb-2 lg:block lg:px-3 lg:pb-0\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -141,9 +141,9 @@ func accountNavLink(tab, label string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue("$activetab === '" + tab + "' ? 'block rounded-lg bg-gray-100 px-4 py-3 text-sm font-medium text-gray-900' : 'mt-1 block rounded-lg px-4 py-3 text-sm text-gray-600 transition hover:bg-gray-100'")
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue("$activetab === '" + tab + "' ? 'mt-0 block shrink-0 whitespace-nowrap rounded-lg bg-gray-100 px-4 py-3 text-sm font-medium text-gray-900' : 'mt-0 block shrink-0 whitespace-nowrap rounded-lg px-4 py-3 text-sm text-gray-600 transition hover:bg-gray-100 lg:mt-1'")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 49, Col: 214}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 49, Col: 281}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
@@ -191,7 +191,7 @@ func profileContent(user *db.User) templ.Component {
 			templ_7745c5c3_Var7 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<section id=\"profile-content\" data-show=\"$activetab === 'profile'\" class=\"px-10 py-8\" data-signals:updating=\"false\"><div class=\"max-w-4xl\"><div class=\"flex items-start justify-between\"><div><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">Profile</h1><p class=\"mt-2 text-sm text-[#63685F]\">Manage your personal information and account details.</p></div><button type=\"button\" data-show=\"!$updating\" data-on:click=\"$updating = true\" class=\"rounded-full border border-[#DFE5DA] bg-white px-4 py-2 text-sm font-medium text-[#283B28] transition hover:bg-[#F0EFE9]\">Edit profile</button></div><form id=\"profile-form\" class=\"mt-8 rounded-2xl border border-[#E5E8DF] bg-white p-8\" data-on:submit=\"@post('/profile', {contentType: 'form'})\"><div class=\"grid grid-cols-1 gap-6 sm:grid-cols-2\"><div><label class=\"mb-1.5 block text-xs font-medium uppercase tracking-wide text-[#63685F]\">Full name</label> <input type=\"text\" name=\"name\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<section id=\"profile-content\" data-show=\"$activetab === 'profile'\" class=\"px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8\" data-signals:updating=\"false\"><div class=\"max-w-4xl\"><div class=\"flex flex-col items-start gap-4 sm:flex-row sm:justify-between\"><div><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">Profile</h1><p class=\"mt-2 text-sm text-[#63685F]\">Manage your personal information and account details.</p></div><button type=\"button\" data-show=\"!$updating\" data-on:click=\"$updating = true\" class=\"w-full rounded-full border border-[#DFE5DA] bg-white px-4 py-2.5 text-sm font-medium text-[#283B28] transition hover:bg-[#F0EFE9] sm:w-auto sm:py-2\">Edit profile</button></div><form id=\"profile-form\" class=\"mt-8 rounded-2xl border border-[#E5E8DF] bg-white p-5 sm:p-8\" data-on:submit=\"@post('/profile', {contentType: 'form'})\"><div class=\"grid grid-cols-1 gap-6 sm:grid-cols-2\"><div><label class=\"mb-1.5 block text-xs font-medium uppercase tracking-wide text-[#63685F]\">Full name</label> <input type=\"text\" name=\"name\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -243,7 +243,7 @@ func profileContent(user *db.User) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" placeholder=\"No address added\" data-attr:disabled=\"!$updating\" class=\"w-full rounded-xl border border-[#E5E8DF] bg-[#F7F8F5] px-4 py-2.5 text-sm text-[#20231F] outline-none disabled:cursor-not-allowed\"><div id=\"err-address\" class=\"mt-1 text-xs text-red-600\"></div></div></div><div data-show=\"$updating\" class=\"mt-6 flex justify-end gap-3 border-t border-[#E5E8DF] pt-6\"><button type=\"button\" data-on:click=\"document.getElementById('profile-form').reset(); $updating = false\" class=\"rounded-full border border-[#DFE5DA] bg-white px-4 py-2 text-sm font-medium text-[#63685F] transition hover:bg-[#F0EFE9]\">Cancel</button> <button type=\"submit\" class=\"rounded-full bg-[#283B28] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#3C523C]\">Save</button></div></form><div class=\"mt-6 flex gap-6 text-xs text-[#63685F]\"><p>Member since ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" placeholder=\"No address added\" data-attr:disabled=\"!$updating\" class=\"w-full rounded-xl border border-[#E5E8DF] bg-[#F7F8F5] px-4 py-2.5 text-sm text-[#20231F] outline-none disabled:cursor-not-allowed\"><div id=\"err-address\" class=\"mt-1 text-xs text-red-600\"></div></div></div><div data-show=\"$updating\" class=\"mt-6 flex flex-wrap justify-end gap-3 border-t border-[#E5E8DF] pt-6\"><button type=\"button\" data-on:click=\"document.getElementById('profile-form').reset(); $updating = false\" class=\"rounded-full border border-[#DFE5DA] bg-white px-4 py-2.5 text-sm font-medium text-[#63685F] transition hover:bg-[#F0EFE9] sm:py-2\">Cancel</button> <button type=\"submit\" class=\"rounded-full bg-[#283B28] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#3C523C] sm:py-2\">Save</button></div></form><div class=\"mt-6 flex flex-wrap gap-x-6 gap-y-1 text-xs text-[#63685F]\"><p>Member since ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -298,7 +298,7 @@ func ordersContent() templ.Component {
 			templ_7745c5c3_Var14 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<section data-show=\"$activetab === 'orders'\" class=\"px-10 py-8\"><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">Orders</h1><p class=\"mt-2 text-sm text-[#63685F]\">Your order history will show up here.</p></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<section data-show=\"$activetab === 'orders'\" class=\"px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8\"><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">Orders</h1><p class=\"mt-2 text-sm text-[#63685F]\">Your order history will show up here.</p></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -327,7 +327,7 @@ func messagesContent() templ.Component {
 			templ_7745c5c3_Var15 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<section data-show=\"$activetab === 'messages'\" class=\"px-10 py-8\"><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">Messages</h1><p class=\"mt-2 text-sm text-[#63685F]\">Your conversations will show up here.</p></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<section data-show=\"$activetab === 'messages'\" class=\"px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8\"><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">Messages</h1><p class=\"mt-2 text-sm text-[#63685F]\">Your conversations will show up here.</p></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -356,7 +356,7 @@ func reviewsContent() templ.Component {
 			templ_7745c5c3_Var16 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<section data-show=\"$activetab === 'reviews'\" class=\"px-10 py-8\"><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">My reviews</h1><p class=\"mt-2 text-sm text-[#63685F]\">Reviews you've written will show up here.</p></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<section data-show=\"$activetab === 'reviews'\" class=\"px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8\"><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">My reviews</h1><p class=\"mt-2 text-sm text-[#63685F]\">Reviews you've written will show up here.</p></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -403,7 +403,7 @@ func ProfileRenderer(user *db.User, tab string) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = Html("Profile", user).Render(templ.WithChildren(ctx, templ_7745c5c3_Var18), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Html("Profile", user, "profile").Render(templ.WithChildren(ctx, templ_7745c5c3_Var18), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

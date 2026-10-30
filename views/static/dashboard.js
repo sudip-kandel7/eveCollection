@@ -12,7 +12,6 @@ function setProductImageError(message) {
   if (el) el.textContent = message || '';
 }
 
-// Returns { ok, error } for a candidate image file.
 function isAllowedImage(file) {
   if (ALLOWED_IMAGE_TYPES.indexOf(file.type) === -1) {
     return { ok: false, error: 'Images must be JPG, JPEG or PNG' };
@@ -23,8 +22,6 @@ function isAllowedImage(file) {
   return { ok: true, error: '' };
 }
 
-// Guards the single category image input. Returns false when rejected so the
-// datastar expression skips setting the preview signals.
 function acceptCategoryImage(input) {
   const file = input.files[0];
   if (!file) {
@@ -96,14 +93,9 @@ function addProductImages(input) {
 
   window.productImages = window.productImages.concat(accepted);
 
-  // Clear the native picker first so re-picking the same file still fires a
-  // change event, then let renderProductImages() restore input.files from
-  // window.productImages. Clearing value *after* that would wipe the files.
   input.value = '';
   renderProductImages();
 }
-// Clears the parts of the product form that datastar signals cannot reach:
-// tags, chosen images and variant rows. Called after a successful save.
 window.resetProductExtras = function () {
   var tags = document.getElementById('tags');
   if (tags) tags.innerHTML = '';
@@ -145,8 +137,6 @@ function appendImagePreview(container, src, isCover, onRemove) {
   return wrap;
 }
 
-// Renders saved images (by URL) followed by newly picked files, then rebuilds
-// input.files from the new files only. Saved images stay in existingImages.
 function renderProductImages() {
   const container = document.getElementById('image-previews');
   const input = document.getElementById('images-input');
@@ -162,7 +152,6 @@ function renderProductImages() {
       renderProductImages();
     });
 
-    // Tells the server which saved images are still kept on update.
     const hidden = document.createElement('input');
     hidden.type = 'hidden';
     hidden.name = 'existing_images[]';
@@ -185,7 +174,6 @@ function renderProductImages() {
   input.files = dt.files;
 }
 
-// Called by the server after an edit request with the product's saved image URLs.
 window.setExistingImages = function (urls) {
   window.existingImages = urls || [];
   window.productImages = [];
@@ -231,24 +219,24 @@ window.setExistingImages = function (urls) {
         <span class="variant-number text-xs font-semibold uppercase tracking-wide text-[#8A9285]"></span>
         <button type="button" class="remove-variant text-xs font-medium text-red-500 hover:text-red-700">Remove</button>
       </div>
-      <div class="mt-2 grid grid-cols-4 gap-2">
+      <div class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <div>
           <label class="mb-1 block text-xs font-medium text-[#63685F]">Color <span class="text-xs text-[#8A9285]">*</span></label>
-          <input type="text" name="variants[${index}].color" class="w-full rounded-lg border border-[#DFE5DA] bg-white px-2.5 py-1.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]"/>
+          <input type="text" name="variants[${index}].color" class="w-full rounded-lg border border-[#DFE5DA] bg-white px-2.5 py-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28] sm:py-1.5"/>
         </div>
         <div>
           <label class="mb-1 block text-xs font-medium text-[#63685F]">Size <span class="text-xs text-[#8A9285]">*</span></label>
-          <input type="text" name="variants[${index}].size" class="w-full rounded-lg border border-[#DFE5DA] bg-white px-2.5 py-1.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]"/>
+          <input type="text" name="variants[${index}].size" class="w-full rounded-lg border border-[#DFE5DA] bg-white px-2.5 py-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28] sm:py-1.5"/>
         </div>
         <div>
           <label class="mb-1 block text-xs font-medium text-[#63685F]">Stock <span class="text-xs text-[#8A9285]">*</span></label>
-          <input type="number" min="0" name="variants[${index}].stock" class="w-full rounded-lg border border-[#DFE5DA] bg-white px-2.5 py-1.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]"/>
+          <input type="number" min="0" inputmode="numeric" name="variants[${index}].stock" class="w-full rounded-lg border border-[#DFE5DA] bg-white px-2.5 py-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28] sm:py-1.5"/>
         </div>
         <div>
           <label class="mb-1 block text-xs font-medium text-[#63685F]">Price</label>
           <div class="relative">
             <span class="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-xs text-[#8A9285]">Rs.</span>
-            <input type="text" name="variants[${index}].price" placeholder="Base" class="w-full rounded-lg border border-[#DFE5DA] bg-white py-1.5 pl-8 pr-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]"/>
+            <input type="text" inputmode="decimal" name="variants[${index}].price" placeholder="Base" class="w-full rounded-lg border border-[#DFE5DA] bg-white py-2.5 pl-8 pr-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28] sm:py-1.5"/>
           </div>
         </div>
       </div>
@@ -274,8 +262,6 @@ window.setExistingImages = function (urls) {
     addVariant();
   };
 
-  // The edit response replaces the rows server-side; align the counter so the
-  // next "+ Add variant" continues numbering instead of colliding.
   window.syncVariantIndex = function () {
     variantIndex = container.querySelectorAll('.variant-row').length;
     updateRemoveButtons();

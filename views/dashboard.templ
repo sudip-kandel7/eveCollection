@@ -15,13 +15,13 @@ func textOrEmpty(t pgtype.Text) string {
 }
 
 templ dashboard(user *db.User, tab string, categories []db.ListCategoriesWithPCRow, products []db.ListProductsRow) {
-	<div class="mx-auto flex min-h-screen w-full" data-signals:activetab={"'" + tab + "'"}>
-		<aside class="w-64 shrink-0 border-r border-gray-200 bg-white">
-			<div class="px-6 py-8">
+	<div class="mx-auto flex w-full flex-1 flex-col lg:flex-row" data-signals:activetab={"'" + tab + "'"}>
+		<aside class="w-full shrink-0 border-b border-gray-200 bg-white lg:w-64 lg:border-b-0 lg:border-r">
+			<div class="px-4 py-4 sm:px-6 sm:py-6 lg:px-6 lg:py-8">
 				<h2 class="text-lg font-semibold text-gray-900">My Account</h2>
 				<p class="mt-1 text-sm text-gray-500">Manage your account</p>
 			</div>
-			<nav class="px-3">
+			<nav class="flex flex-wrap gap-2 px-3 pb-2 lg:block lg:px-3 lg:pb-0">
 				@dashboardNavLink("overview", "Overview")
 				@dashboardNavLink("category", "Category")
 				@dashboardNavLink("products", "Products")
@@ -45,26 +45,26 @@ templ dashboard(user *db.User, tab string, categories []db.ListCategoriesWithPCR
 templ dashboardNavLink(tab, label string) {
 	<a	href="#"
 		data-on:click__prevent={ "$activetab = '" + tab + "'" }
-		data-attr:class={ "$activetab === '" + tab + "' ? 'block rounded-lg bg-gray-100 px-4 py-3 text-sm font-medium text-gray-900' : 'mt-1 block rounded-lg px-4 py-3 text-sm text-gray-600 transition hover:bg-gray-100'" }
+		data-attr:class={ "$activetab === '" + tab + "' ? 'mt-0 block shrink-0 whitespace-nowrap rounded-lg bg-gray-100 px-4 py-3 text-sm font-medium text-gray-900' : 'mt-0 block shrink-0 whitespace-nowrap rounded-lg px-4 py-3 text-sm text-gray-600 transition hover:bg-gray-100 lg:mt-1'" }
 	>
 		{ label }
 	</a>
 }
 
 templ OverviewContent(user *db.User) {
-	<section data-show="$activetab === 'overview'" class="px-10 py-8">
+	<section data-show="$activetab === 'overview'" class="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8">
 		<h1 class="text-2xl font-semibold tracking-tight text-[#20231F]">Overview</h1>
 		<p class="mt-2 text-sm text-[#63685F]">Your overall data will show up here.</p>
 	</section>
 }
 
 templ CategoryAdminContent(categories []db.ListCategoriesWithPCRow) {
-	<section id="category-admin" data-show="$activetab === 'category'" class="px-10 py-8" data-signals:formmode="'create'" data-signals:catactive="true" data-signals:catname="''" data-signals:categoryid="'0'" data-signals:catimage="''" data-signals:catpreview="''" data-signals:submitting="false">
+	<section id="category-admin" data-show="$activetab === 'category'" class="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8" data-signals:formmode="'create'" data-signals:catactive="true" data-signals:catname="''" data-signals:categoryid="'0'" data-signals:catimage="''" data-signals:catpreview="''" data-signals:submitting="false">
 		<h1 class="text-2xl font-semibold tracking-tight text-[#20231F]">Category</h1>
 		<p class="mt-2 text-sm text-[#63685F]">Add, edit, or hide product categories.</p>
 
 		<div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
-			<div class="rounded-2xl border border-[#E5E8DF] bg-white p-6">
+			<div class="rounded-2xl border border-[#E5E8DF] bg-white p-4 sm:p-6">
 				<h2 class="text-sm font-semibold text-[#20231F]" data-text="$formmode === 'create' ? 'Add category' : 'Edit category'"></h2>
 				<p class="mt-1 text-xs text-[#63685F]">
 					<span data-show="$formmode === 'create'">Create a new product category.</span>
@@ -107,27 +107,27 @@ templ CategoryAdminContent(categories []db.ListCategoriesWithPCRow) {
 			<div class="flex flex-col gap-2">
 				for _, c := range categories {
 					<div
-						data-attr:class={ "$categoryid === " + strconv.FormatInt(int64(c.ID), 10) + " ? 'group grid grid-cols-[40px_1fr_90px_90px_90px] items-center gap-3 rounded-xl border-2 border-[#283B28] bg-[#F7F8F5] p-3 transition hover:-translate-y-0.5 hover:shadow-md' : 'group grid grid-cols-[40px_1fr_90px_90px_90px] items-center gap-3 rounded-xl border-2 border-[#E5E8DF] bg-white p-3 transition hover:-translate-y-0.5 hover:shadow-md'" }
+						data-attr:class={ "$categoryid === " + strconv.FormatInt(int64(c.ID), 10) + " ? 'group grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border-2 border-[#283B28] bg-[#F7F8F5] p-3 transition hover:-translate-y-0.5 hover:shadow-md sm:grid-cols-[40px_1fr_90px_90px_90px]' : 'group grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border-2 border-[#E5E8DF] bg-white p-3 transition hover:-translate-y-0.5 hover:shadow-md sm:grid-cols-[40px_1fr_90px_90px_90px]'" }
 					>
-						<img src={ textOrEmpty(c.ImageUrl) } alt="" class="h-8 w-8 rounded-lg object-cover bg-[#F0EFE9]"/>
-						<span class="text-sm font-medium text-[#20231F]">{ c.Name }</span>
+						<img src={ textOrEmpty(c.ImageUrl) } alt="" class="col-start-1 row-start-1 h-8 w-8 rounded-lg object-cover bg-[#F0EFE9] sm:col-auto sm:row-auto"/>
+						<span class="col-start-2 row-start-1 truncate text-sm font-medium text-[#20231F] sm:col-auto sm:row-auto">{ c.Name }</span>
 
 						<a
 							href="#"
 							data-on:click__prevent={ "$activetab = 'products'; $pcatfilter = '" + strconv.FormatInt(int64(c.ID), 10) + "'; $psearch = ''; @get('/admin/products/search?q=&category=" + strconv.FormatInt(int64(c.ID), 10) + "')" }
-							class="relative inline-block text-sm font-semibold text-[#283B28] transition-colors duration-200 hover:text-[#4A704A]"
+							class="relative col-start-3 row-start-1 inline-block justify-self-end text-sm font-semibold text-[#283B28] transition-colors duration-200 hover:text-[#4A704A] sm:col-auto sm:row-auto"
 						>
 							{ fmt.Sprintf("%02d", c.ProductCount) }
 							<span class="absolute bottom-[-3px] left-[-2px] h-[1.5px] w-6 origin-right scale-x-0 bg-[#4A704A] transition-transform duration-300 ease-out group-hover:origin-left group-hover:scale-x-100"></span>
 						</a>
 
 						if c.IsActive {
-							<span class="w-fit rounded-full bg-[#E7F3E5] px-2.5 py-0.5 text-xs font-medium text-[#2E6B33]">Active</span>
+							<span class="col-start-2 row-start-2 w-fit rounded-full bg-[#E7F3E5] px-2.5 py-0.5 text-xs font-medium text-[#2E6B33] sm:col-auto sm:row-auto">Active</span>
 						} else {
-							<span class="w-fit rounded-full bg-[#FBE9E7] px-2.5 py-0.5 text-xs font-medium text-[#B3392C]">Hidden</span>
+							<span class="col-start-2 row-start-2 w-fit rounded-full bg-[#FBE9E7] px-2.5 py-0.5 text-xs font-medium text-[#B3392C] sm:col-auto sm:row-auto">Hidden</span>
 						}
 
-						<div class="flex gap-1.5">
+						<div class="col-start-3 row-start-2 flex justify-self-end gap-1.5 sm:col-auto sm:row-auto">
 							<button
 								type="button"
 								data-on:click={ "$formmode = 'edit'; $categoryid = " + strconv.FormatInt(int64(c.ID), 10) + "; $catname = '" + c.Name + "'; $catactive = " + strconv.FormatBool(c.IsActive)  + "; " +
@@ -155,7 +155,7 @@ templ CategoryAdminContent(categories []db.ListCategoriesWithPCRow) {
 				}
 
 				if len(categories) == 0 {
-					<div class="rounded-xl border border-dashed border-[#DFE5DA] p-10 text-center text-sm text-[#63685F]">
+					<div class="rounded-xl border border-dashed border-[#DFE5DA] p-6 text-center text-sm text-[#63685F] sm:p-10">
 						No categories yet — create your first one on the left.
 					</div>
 				}
@@ -168,7 +168,7 @@ templ ProductsAdminContent(categories []db.ListCategoriesWithPCRow, products []d
 	<section
 		id="products-admin"
 		data-show="$activetab === 'products'"
-		class="px-10 py-6"
+		class="px-4 py-6 sm:px-6 lg:px-10 lg:py-6"
 		data-signals:pformmode="'create'"
 		data-signals:productid="'0'"
 		data-signals:pname="''"
@@ -182,7 +182,7 @@ templ ProductsAdminContent(categories []db.ListCategoriesWithPCRow, products []d
 	>
 		<div class="grid grid-cols-1 gap-6 xl:grid-cols-2 items-start">
 
-			<div class="rounded-2xl border border-[#E5E8DF] bg-white p-6">
+			<div class="rounded-2xl border border-[#E5E8DF] bg-white p-4 sm:p-6">
 				<div class="flex items-baseline justify-between">
 					<span class="text-xs font-semibold uppercase tracking-wide text-[#8A9285]">Product details</span>
 					<span class="text-xs text-[#8A9285]">* Required fields</span>
@@ -196,7 +196,7 @@ templ ProductsAdminContent(categories []db.ListCategoriesWithPCRow, products []d
 					data-on:datastar-fetch.document="evt.detail.type === 'finished' && ($psubmitting = false)"
 				data-on:submit__prevent="$psubmitting = true; $pformmode === 'create' ? @post('/admin/products', {contentType: 'form'}) : @post('/admin/products/' + $productid, {contentType: 'form'})"
 				>
-					<div class="grid grid-cols-2 gap-4">
+					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div>
 							<label class="mb-1.5 block text-sm font-medium text-[#20231F]">Product name <span class="text-xs text-[#8A9285]">*</span></label>
 							<input type="text" name="name" data-bind:pname
@@ -231,7 +231,7 @@ templ ProductsAdminContent(categories []db.ListCategoriesWithPCRow, products []d
 								<label class="block text-sm font-medium text-[#20231F]">Base price <span class="text-xs text-[#8A9285]">*</span></label>
 								<div class="relative mt-1">
 									<span class="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-sm text-[#8A9285]">Rs.</span>
-									<input type="text" name="base_price" data-bind:pprice
+									<input type="text" name="base_price" data-bind:pprice inputmode="decimal"
 										class="w-full rounded-xl border border-[#DFE5DA] bg-white py-2 pl-10 pr-3.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]"
 										placeholder="0.00"/>
 								</div>
@@ -286,7 +286,7 @@ templ ProductsAdminContent(categories []db.ListCategoriesWithPCRow, products []d
 
 				
 					<div class="border-t border-[#E5E8DF] pt-4">
-						<div class="flex items-center justify-between">
+						<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 							<div>
 								<h3 class="text-sm font-semibold text-[#20231F]">Variants <span class="text-xs text-[#8A9285]">*</span></h3>
 								<p class="text-xs text-[#8A9285]">Stock is tracked for each color and size.</p>
@@ -294,7 +294,7 @@ templ ProductsAdminContent(categories []db.ListCategoriesWithPCRow, products []d
 							<button
 								type="button"
 								id="add-variant"
-								class="flex items-center gap-1.5 rounded-full border border-[#DFE5DA] bg-white px-3.5 py-1.5 text-sm font-medium text-[#283B28] hover:bg-[#F0EFE9]"
+								class="flex shrink-0 items-center gap-1.5 rounded-full border border-[#DFE5DA] bg-white px-3.5 py-2.5 text-sm font-medium text-[#283B28] hover:bg-[#F0EFE9] sm:py-1.5"
 							>
 								+ Add variant
 							</button>
@@ -305,15 +305,15 @@ templ ProductsAdminContent(categories []db.ListCategoriesWithPCRow, products []d
 					
             
 
-					<div class="flex items-center justify-end border-t border-[#E5E8DF] pt-4">
+					<div class="flex flex-wrap items-center justify-end gap-2 border-t border-[#E5E8DF] pt-4">
 						<div class="flex gap-2">
 							<button type="button" data-show="$pformmode === 'edit' && !$psubmitting"
 								data-on:click="$pformmode = 'create'; $productid = '0'; $pname = ''; $pcategory = ''; $pdescription = ''; $pprice = ''; $pvisible = true; resetProductExtras()"
-								class="whitespace-nowrap rounded-lg border border-[#DFE5DA] bg-white px-4 py-2 text-sm font-medium text-[#63685F] transition hover:bg-[#F0EFE9]">
+								class="whitespace-nowrap rounded-lg border border-[#DFE5DA] bg-white px-4 py-2.5 text-sm font-medium text-[#63685F] transition hover:bg-[#F0EFE9] sm:py-2">
 								Cancel
 							</button>
 							<button type="submit" data-attr:disabled="$psubmitting"
-								class="whitespace-nowrap rounded-lg bg-[#283B28] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#3C523C]"
+								class="whitespace-nowrap rounded-lg bg-[#283B28] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#3C523C] sm:py-2"
 								data-text="$psubmitting ? 'Saving...' : ($pformmode === 'create' ? 'Create' : 'Update')">
 							</button>
 						</div>
@@ -321,21 +321,21 @@ templ ProductsAdminContent(categories []db.ListCategoriesWithPCRow, products []d
 				</form>
 			</div>
 
-			<div class="rounded-2xl border border-[#E5E8DF] bg-white p-6">
+			<div class="rounded-2xl border border-[#E5E8DF] bg-white p-4 sm:p-6">
 				<span class="text-xs font-semibold uppercase tracking-wide text-[#8A9285]">Inventory overview</span>
 				<div class="mt-0.5 flex items-center gap-2">
 					<h2 class="text-xl font-bold tracking-tight text-[#20231F]">Your products</h2>
 					@ProductCount(len(products))
 				</div>
 
-				<div class="mt-4 flex gap-3">
+				<div class="mt-4 flex flex-col gap-3 sm:flex-row">
 					<input type="text" data-bind:psearch
 						data-on:input__debounce.400ms="@get('/admin/products/search?q=' + $psearch + '&category=' + $pcatfilter)"
-						class="flex-1 rounded-xl border border-[#DFE5DA] bg-white px-3.5 py-2 text-sm text-[#20231F] outline-none focus:border-[#283B28]"
+						class="w-full flex-1 rounded-xl border border-[#DFE5DA] bg-white px-3.5 py-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28] sm:py-2"
 						placeholder="Search products"/>
 					<select data-bind:pcatfilter
 						data-on:change="@get('/admin/products/search?q=' + $psearch + '&category=' + $pcatfilter)"
-						class="rounded-xl border border-[#DFE5DA] bg-white px-3.5 py-2 text-sm text-[#20231F] outline-none focus:border-[#283B28]">
+						class="w-full rounded-xl border border-[#DFE5DA] bg-white px-3.5 py-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28] sm:w-auto sm:py-2">
 						<option value="">All categories</option>
 						for _, c := range categories {
 							<option value={ strconv.FormatInt(int64(c.ID), 10) }>{ c.Name }</option>
@@ -371,24 +371,24 @@ templ ProductVariantRows(variants []db.ListProductVariantsRow) {
 				<span class="variant-number text-xs font-semibold uppercase tracking-wide text-[#8A9285]">{ fmt.Sprintf("Variant %d", i+1) }</span>
 				<button type="button" class="remove-variant text-xs font-medium text-red-500 hover:text-red-700">Remove</button>
 			</div>
-			<div class="mt-2 grid grid-cols-4 gap-2">
+			<div class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
 				<div>
 					<label class="mb-1 block text-xs font-medium text-[#63685F]">Color <span class="text-xs text-[#8A9285]">*</span></label>
-					<input type="text" name={ "variants[" + strconv.Itoa(i) + "].color" } value={ textOrEmpty(v.Color) } class="w-full rounded-lg border border-[#DFE5DA] bg-white px-2.5 py-1.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]"/>
+					<input type="text" name={ "variants[" + strconv.Itoa(i) + "].color" } value={ textOrEmpty(v.Color) } class="w-full rounded-lg border border-[#DFE5DA] bg-white px-2.5 py-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28] sm:py-1.5"/>
 				</div>
 				<div>
 					<label class="mb-1 block text-xs font-medium text-[#63685F]">Size <span class="text-xs text-[#8A9285]">*</span></label>
-					<input type="text" name={ "variants[" + strconv.Itoa(i) + "].size" } value={ textOrEmpty(v.Size) } class="w-full rounded-lg border border-[#DFE5DA] bg-white px-2.5 py-1.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]"/>
+					<input type="text" name={ "variants[" + strconv.Itoa(i) + "].size" } value={ textOrEmpty(v.Size) } class="w-full rounded-lg border border-[#DFE5DA] bg-white px-2.5 py-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28] sm:py-1.5"/>
 				</div>
 				<div>
 					<label class="mb-1 block text-xs font-medium text-[#63685F]">Stock <span class="text-xs text-[#8A9285]">*</span></label>
-					<input type="number" min="0" name={ "variants[" + strconv.Itoa(i) + "].stock" } value={ strconv.Itoa(int(v.Stock)) } class="w-full rounded-lg border border-[#DFE5DA] bg-white px-2.5 py-1.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]"/>
+					<input type="number" min="0" inputmode="numeric" name={ "variants[" + strconv.Itoa(i) + "].stock" } value={ strconv.Itoa(int(v.Stock)) } class="w-full rounded-lg border border-[#DFE5DA] bg-white px-2.5 py-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28] sm:py-1.5"/>
 				</div>
 				<div>
 					<label class="mb-1 block text-xs font-medium text-[#63685F]">Price</label>
 					<div class="relative">
 						<span class="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-xs text-[#8A9285]">Rs.</span>
-						<input type="text" name={ "variants[" + strconv.Itoa(i) + "].price" } value={ priceOverrideText(v.PriceOverride) } placeholder="Base" class="w-full rounded-lg border border-[#DFE5DA] bg-white py-1.5 pl-8 pr-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28]"/>
+						<input type="text" inputmode="decimal" name={ "variants[" + strconv.Itoa(i) + "].price" } value={ priceOverrideText(v.PriceOverride) } placeholder="Base" class="w-full rounded-lg border border-[#DFE5DA] bg-white py-2.5 pl-8 pr-2.5 text-sm text-[#20231F] outline-none focus:border-[#283B28] sm:py-1.5"/>
 					</div>
 				</div>
 			</div>
@@ -409,36 +409,36 @@ templ ProductTagChips(tags []string) {
 templ ProductsList(products []db.ListProductsRow) {
 	<div id="product-list" class="mt-6 flex flex-col gap-2">
 		if len(products) == 0 {
-			<div class="rounded-xl border border-dashed border-[#DFE5DA] p-10 text-center text-sm text-[#63685F]">
+			<div class="rounded-xl border border-dashed border-[#DFE5DA] p-6 text-center text-sm text-[#63685F] sm:p-10">
 				Add your first product with photos, variants, and stock details.
 			</div>
 		} else {
 			for _, p := range products {
 				<div
-					data-attr:class={ "$productid === " + strconv.FormatInt(int64(p.ID), 10) + " ? 'group grid grid-cols-[40px_1fr_90px_90px_90px] items-center gap-3 rounded-xl border-2 border-[#283B28] bg-[#F7F8F5] p-3 transition hover:-translate-y-0.5 hover:shadow-md' : 'group grid grid-cols-[40px_1fr_90px_90px_90px] items-center gap-3 rounded-xl border-2 border-[#E5E8DF] bg-white p-3 transition hover:-translate-y-0.5 hover:shadow-md'" }
+					data-attr:class={ "$productid === " + strconv.FormatInt(int64(p.ID), 10) + " ? 'group grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border-2 border-[#283B28] bg-[#F7F8F5] p-3 transition hover:-translate-y-0.5 hover:shadow-md sm:grid-cols-[40px_1fr_90px_90px_90px]' : 'group grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border-2 border-[#E5E8DF] bg-white p-3 transition hover:-translate-y-0.5 hover:shadow-md sm:grid-cols-[40px_1fr_90px_90px_90px]'" }
 				>
 					if img, ok := p.CoverImage.(string); ok && img != "" {
-						<img src={ img } alt="" class="h-8 w-8 rounded-lg object-cover bg-[#F0EFE9]"/>
+						<img src={ img } alt="" class="col-start-1 row-start-1 h-8 w-8 rounded-lg object-cover bg-[#F0EFE9] sm:col-auto sm:row-auto"/>
 					} else {
-						<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F0EFE9] text-[9px] font-semibold text-[#8A9285]">
+						<div class="col-start-1 row-start-1 flex h-8 w-8 items-center justify-center rounded-lg bg-[#F0EFE9] text-[9px] font-semibold text-[#8A9285] sm:col-auto sm:row-auto">
 							N/A
 						</div>
 					}
 
-					<div class="min-w-0">
+					<div class="col-start-2 row-start-1 min-w-0 sm:col-auto sm:row-auto">
 						<p class="truncate text-sm font-medium text-[#20231F]">{ p.Name }</p>
 						<p class="truncate text-xs text-[#8A9285]">{ p.CategoryName }</p>
 					</div>
 
-					<span class="text-sm font-semibold text-[#283B28]">{ fmt.Sprintf("%02d", p.TotalStock) }</span>
+					<span class="col-start-3 row-start-1 justify-self-end text-sm font-semibold text-[#283B28] sm:col-auto sm:row-auto">{ fmt.Sprintf("%02d", p.TotalStock) }</span>
 
 					if p.IsActive {
-						<span class="w-fit rounded-full bg-[#E7F3E5] px-2.5 py-0.5 text-xs font-medium text-[#2E6B33]">Active</span>
+						<span class="col-start-2 row-start-2 w-fit rounded-full bg-[#E7F3E5] px-2.5 py-0.5 text-xs font-medium text-[#2E6B33] sm:col-auto sm:row-auto">Active</span>
 					} else {
-						<span class="w-fit rounded-full bg-[#FBE9E7] px-2.5 py-0.5 text-xs font-medium text-[#B3392C]">Hidden</span>
+						<span class="col-start-2 row-start-2 w-fit rounded-full bg-[#FBE9E7] px-2.5 py-0.5 text-xs font-medium text-[#B3392C] sm:col-auto sm:row-auto">Hidden</span>
 					}
 
-					<div class="flex gap-1.5">
+					<div class="col-start-3 row-start-2 flex justify-self-end gap-1.5 sm:col-auto sm:row-auto">
 						<button
 							type="button"
 							data-on:click={ "@get('/admin/products/" + strconv.FormatInt(int64(p.ID), 10) + "/edit')" }
@@ -458,28 +458,28 @@ templ ProductsList(products []db.ListProductsRow) {
 }
 
 templ OrdersAdminContent() {
-	<section data-show="$activetab === 'orders'" class="px-10 py-8">
+	<section data-show="$activetab === 'orders'" class="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8">
 		<h1 class="text-2xl font-semibold tracking-tight text-[#20231F]">Orders</h1>
 		<p class="mt-2 text-sm text-[#63685F]">Your order history will show up here.</p>
 	</section>
 }
 
 templ MessagesAdminContent() {
-	<section data-show="$activetab === 'messages'" class="px-10 py-8">
+	<section data-show="$activetab === 'messages'" class="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8">
 		<h1 class="text-2xl font-semibold tracking-tight text-[#20231F]">Messages</h1>
 		<p class="mt-2 text-sm text-[#63685F]">Your conversations will show up here.</p>
 	</section>
 }
 
 templ ReviewsAdminContent() {
-	<section data-show="$activetab === 'reviews'" class="px-10 py-8">
+	<section data-show="$activetab === 'reviews'" class="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8">
 		<h1 class="text-2xl font-semibold tracking-tight text-[#20231F]">My reviews</h1>
 		<p class="mt-2 text-sm text-[#63685F]">Reviews you've written will show up here.</p>
 	</section>
 }
 
 templ DashboardRenderer(user *db.User, tab string, categories []db.ListCategoriesWithPCRow, products []db.ListProductsRow) {
-	@Html("Dashboard", user){
+	@Html("Dashboard", user, "dashboard"){
 		@dashboard(user, tab, categories, products)
 	}
 }

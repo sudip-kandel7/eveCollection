@@ -12,7 +12,7 @@ import (
 	"github.com/sudip-kandel7/eveCollection/internal/db"
 )
 
-func Nav(user *db.User) templ.Component {
+func Nav(user *db.User, active string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -33,68 +33,123 @@ func Nav(user *db.User) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<nav class=\"w-full border-b border-[#E7E5DE] bg-[#FFFFFF]\"><div class=\"mx-auto flex h-16 max-w-7xl items-center justify-between px-6\"><div class=\"flex items-center gap-2.5\"><a href=\"/\" class=\"flex items-center gap-2.5\"><img src=\"/static/public/pic.svg\" alt=\"\" class=\"h-9 w-9 rounded-full\"> <span class=\"text-lg font-semibold text-[#20231F]\">eve <span class=\"relative -top-1 text-xs text-[#638154]\">|Collection</span></span></a></div><div class=\"hidden items-center gap-7 md:flex\"><a href=\"/new-in\" class=\"text-sm font-medium text-[#232B1F]\">New In</a> <a href=\"/shop\" class=\"text-sm font-medium text-[#6B7266] transition hover:text-[#232B1F]\">Shop all</a> <a href=\"/our-edit\" class=\"text-sm font-medium text-[#6B7266] transition hover:text-[#232B1F]\">Our edit</a></div><div class=\"flex items-center gap-4\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<nav class=\"sticky top-0 z-50 w-full border-b border-[#E7E5DE] bg-[#FFFFFF]\"><div class=\"mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3 sm:px-6 md:h-16 md:py-0\"><div class=\"order-1 flex items-center gap-2.5 md:order-none\"><a href=\"/\" class=\"flex items-center gap-2.5\"><img src=\"/static/public/pic.svg\" alt=\"\" class=\"h-9 w-9 rounded-full\"> <span class=\"text-lg font-semibold text-[#20231F]\">eve <span class=\"relative -top-1 text-xs text-[#638154]\">|Collection</span></span></a></div><div class=\"order-3 flex w-full items-center justify-center gap-5 overflow-x-auto md:order-none md:w-auto md:justify-start md:gap-7 md:overflow-visible\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var2 = []any{navLinkClass(active, "home")}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var2...)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<a href=\"/\" class=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var3 string
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var2).String())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/nav.templ`, Line: 1, Col: 0}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\">Home</a> ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var4 = []any{navLinkClass(active, "about")}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var4...)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<a href=\"/about\" class=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var5 string
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var4).String())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/nav.templ`, Line: 1, Col: 0}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\">About</a></div><div class=\"order-2 flex items-center gap-4 md:order-none\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if user == nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<a href=\"/login\" class=\"group flex bg-[#c6d1bc] p-2 rounded-md items-center gap-2 text-sm font-medium text-[#3f4939] transition hover:bg-[#b8c6ac] text-md py-2 hover:text-[#343d2f]\"><img src=\"/static/public/log-in.png\" alt=\"Login\" class=\"h-4 w-4 opacity-60 transition-opacity duration-200 group-hover:opacity-100\"> <span>Login</span></a>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<a href=\"/login\" class=\"group flex bg-[#c6d1bc] p-2 rounded-md items-center gap-2 text-sm font-medium text-[#3f4939] transition hover:bg-[#b8c6ac] text-md py-2 hover:text-[#343d2f] min-h-10 md:min-h-0\"><img src=\"/static/public/log-in.png\" alt=\"Login\" class=\"h-4 w-4 opacity-60 transition-opacity duration-200 group-hover:opacity-100\"> <span>Login</span></a>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<div class=\"relative\" data-signals:profile-open=\"false\"><button type=\"button\" data-on:click=\"$profileOpen = !$profileOpen\" class=\"flex items-center justify-center\"><img src=\"/static/public/profile.png\" class=\"h-7 w-7\" alt=\"Profile\"></button><div data-show=\"$profileOpen\" class=\"absolute left-1/2 -translate-x-1/2 top-full mt-2 rounded-lg border border-[#e1e5dc] bg-white p-3 shadow-lg\"><div class=\"border-b border-[#e5e8e2] px-3 pb-3\"><p class=\"text-sm font-semibold text-[#40463b]\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"relative\" data-signals:profile-open=\"false\"><button type=\"button\" data-on:click=\"$profileOpen = !$profileOpen\" class=\"flex h-10 w-10 items-center justify-center md:h-auto md:w-auto\"><img src=\"/static/public/profile.png\" class=\"h-7 w-7\" alt=\"Profile\"></button><div data-show=\"$profileOpen\" class=\"absolute right-0 z-7 top-full mt-2 rounded-lg border border-[#e1e5dc] bg-white p-3 shadow-lg sm:left-1/2 sm:right-auto sm:-translate-x-1/2\"><div class=\"border-b border-[#e5e8e2] px-3 pb-3\"><p class=\"text-sm font-semibold text-[#40463b]\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var2 string
-			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(user.Name)
+			var templ_7745c5c3_Var6 string
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(user.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/nav.templ`, Line: 83, Col: 35}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/nav.templ`, Line: 73, Col: 35}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</p><p class=\"mt-1 text-xs text-[#777d71]\">")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var3 string
-			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(user.Email)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/nav.templ`, Line: 86, Col: 36}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</p><p class=\"mt-1 text-xs text-[#777d71]\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</p></div><div class=\"py-2\">")
+			var templ_7745c5c3_Var7 string
+			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(user.Email)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/nav.templ`, Line: 76, Col: 36}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</p></div><div class=\"py-2\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if user.Role == "admin" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<a href=\"/admin/dashboard\" class=\"block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]\">Dashboard </a>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<a href=\"/admin/dashboard\" class=\"block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]\">Dashboard </a>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<a href=\"/profile\" class=\"block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]\">Profile</a> <a href=\"/orders\" class=\"block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]\">My Orders</a>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<a href=\"/profile\" class=\"block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]\">Profile</a> <a href=\"/orders\" class=\"block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]\">My Orders</a>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</div><div class=\"border-t border-[#e5e8e2] pt-2\"><form method=\"POST\" action=\"/logout\"><button type=\"submit\" class=\"w-full flex items-center justify-start gap-2 rounded-md px-3 py-2 text-left text-sm text-[#596052] hover:bg-[#f1f3ee]\"><img src=\"/static/public/logout.png\" alt=\"Logout\" class=\"h-4 w-4 opacity-60 transition-opacity duration-200 group-hover:opacity-100\"> Logout</button></form></div></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div><div class=\"border-t border-[#e5e8e2] pt-2\"><form method=\"POST\" action=\"/logout\"><button type=\"submit\" class=\"w-full flex items-center justify-start gap-2 rounded-md px-3 py-2 text-left text-sm text-[#596052] hover:bg-[#f1f3ee]\"><img src=\"/static/public/logout.png\" alt=\"Logout\" class=\"h-4 w-4 opacity-60 transition-opacity duration-200 group-hover:opacity-100\"> Logout</button></form></div></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</div></div></nav>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</div></div></nav>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		return nil
 	})
+}
+
+const navLinkBase = "whitespace-nowrap py-2.5 text-sm font-medium transition md:py-0 "
+const navLinkActive = navLinkBase + "text-[#232B1F]"
+const navLinkIdle = navLinkBase + "text-[#6B7266] hover:text-[#232B1F]"
+
+func navLinkClass(active, key string) string {
+	if active == key {
+		return navLinkActive
+	}
+	return navLinkIdle
 }
 
 var _ = templruntime.GeneratedTemplate

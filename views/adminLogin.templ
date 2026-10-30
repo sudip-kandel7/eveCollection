@@ -8,8 +8,8 @@ type AdminLoginFormData struct {
 }
 
 templ adminLogin(form AdminLoginFormData) {
-	<div class="flex min-h-screen items-center justify-center bg-[#151914] px-6">
-		<div class="w-full max-w-sm rounded-2xl border border-white/10 bg-[#20251E] p-8">
+	<div class="flex min-h-screen items-center justify-center bg-[#151914] px-4 sm:px-6">
+		<div class="w-full max-w-sm rounded-2xl border border-white/10 bg-[#20251E] p-6 sm:p-8">
 			<h1 class="text-lg font-semibold text-[#F5F7F1]">
 				Admin sign in
 			</h1>
@@ -30,7 +30,7 @@ templ adminLogin(form AdminLoginFormData) {
 						name="identifier"
 						type="text"
 						value={ form.Identifier }
-						class="w-full rounded-lg border border-white/10 bg-[#171C16] px-3 py-2 text-sm text-[#F5F7F1] outline-none transition focus:border-[#E6FF75]/60"
+						class="w-full rounded-lg border border-white/10 bg-[#171C16] px-3 py-2.5 text-sm text-[#F5F7F1] outline-none transition focus:border-[#E6FF75]/60 sm:py-2"
 					/>
 				</div>
 
@@ -44,7 +44,7 @@ templ adminLogin(form AdminLoginFormData) {
 							name="password"
 							data-attr:type="$showPassword ? 'text' : 'password'"
 							autocomplete="off"
-							class="w-full rounded-lg border border-white/10 bg-[#171C16] px-3 py-2 pr-10 text-sm text-[#F5F7F1] outline-none transition focus:border-[#E6FF75]/60"
+							class="w-full rounded-lg border border-white/10 bg-[#171C16] px-3 py-2.5 pr-10 text-sm text-[#F5F7F1] outline-none transition focus:border-[#E6FF75]/60 sm:py-2"
 						/>
 						<button
 														type="button"

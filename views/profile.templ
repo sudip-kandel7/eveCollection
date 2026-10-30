@@ -13,10 +13,10 @@ func formatDate(t pgtype.Timestamp) string {
 }
 
 templ profile(user *db.User, tab string) {
-	<div class="mx-auto flex h-screen w-full" data-signals:activetab={ "'" + tab + "'" }>
+	<div class="mx-auto flex w-full flex-1 flex-col lg:flex-row" data-signals:activetab={ "'" + tab + "'" }>
 
-		<aside class="w-64 shrink-0 border-r border-gray-200 bg-white">
-			<div class="px-6 py-8">
+		<aside class="w-full shrink-0 border-b border-gray-200 bg-white lg:w-64 lg:border-b-0 lg:border-r">
+			<div class="px-4 py-4 sm:px-6 sm:py-6 lg:px-6 lg:py-8">
 				<h2 class="text-lg font-semibold text-gray-900">
 					My Account
 				</h2>
@@ -25,7 +25,7 @@ templ profile(user *db.User, tab string) {
 				</p>
 			</div>
 
-			<nav class="px-3">
+			<nav class="flex flex-wrap gap-2 px-3 pb-2 lg:block lg:px-3 lg:pb-0">
 				@accountNavLink("profile", "Profile")
 				@accountNavLink("orders", "Orders")
 				@accountNavLink("messages", "Messages")
@@ -46,7 +46,7 @@ templ accountNavLink(tab, label string) {
 	
 	<a	href="#"
 		data-on:click__prevent={ "$activetab = '" + tab + "'" }
-		data-attr:class={ "$activetab === '" + tab + "' ? 'block rounded-lg bg-gray-100 px-4 py-3 text-sm font-medium text-gray-900' : 'mt-1 block rounded-lg px-4 py-3 text-sm text-gray-600 transition hover:bg-gray-100'" }
+		data-attr:class={ "$activetab === '" + tab + "' ? 'mt-0 block shrink-0 whitespace-nowrap rounded-lg bg-gray-100 px-4 py-3 text-sm font-medium text-gray-900' : 'mt-0 block shrink-0 whitespace-nowrap rounded-lg px-4 py-3 text-sm text-gray-600 transition hover:bg-gray-100 lg:mt-1'" }
 	>
 		{ label }
 	</a>
@@ -56,12 +56,12 @@ templ profileContent(user *db.User) {
 	<section
 		id="profile-content"
 		data-show="$activetab === 'profile'" 
-		class="px-10 py-8"
+		class="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8"
 		data-signals:updating="false"
 	>
 		<div class="max-w-4xl">
 
-			<div class="flex items-start justify-between">
+			<div class="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
 				<div>
 					<h1 class="text-2xl font-semibold tracking-tight text-[#20231F]">
 						Profile
@@ -75,7 +75,7 @@ templ profileContent(user *db.User) {
 					type="button"
 					data-show="!$updating"
 					data-on:click="$updating = true"
-					class="rounded-full border border-[#DFE5DA] bg-white px-4 py-2 text-sm font-medium text-[#283B28] transition hover:bg-[#F0EFE9]"
+					class="w-full rounded-full border border-[#DFE5DA] bg-white px-4 py-2.5 text-sm font-medium text-[#283B28] transition hover:bg-[#F0EFE9] sm:w-auto sm:py-2"
 				>
 					Edit profile
 				</button>
@@ -83,7 +83,7 @@ templ profileContent(user *db.User) {
 
 			<form
 				id="profile-form"
-				class="mt-8 rounded-2xl border border-[#E5E8DF] bg-white p-8"
+				class="mt-8 rounded-2xl border border-[#E5E8DF] bg-white p-5 sm:p-8"
 				data-on:submit="@post('/profile', {contentType: 'form'})"
 			>
 
@@ -158,19 +158,19 @@ templ profileContent(user *db.User) {
 
 				<div
 					data-show="$updating"
-					class="mt-6 flex justify-end gap-3 border-t border-[#E5E8DF] pt-6"
+					class="mt-6 flex flex-wrap justify-end gap-3 border-t border-[#E5E8DF] pt-6"
 				>
 					<button
 						type="button"
 						data-on:click="document.getElementById('profile-form').reset(); $updating = false"
-						class="rounded-full border border-[#DFE5DA] bg-white px-4 py-2 text-sm font-medium text-[#63685F] transition hover:bg-[#F0EFE9]"
+						class="rounded-full border border-[#DFE5DA] bg-white px-4 py-2.5 text-sm font-medium text-[#63685F] transition hover:bg-[#F0EFE9] sm:py-2"
 					>
 						Cancel
 					</button>
 
 					<button
 						type="submit"
-						class="rounded-full bg-[#283B28] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#3C523C]"
+						class="rounded-full bg-[#283B28] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#3C523C] sm:py-2"
 					>
 						Save
 					</button>
@@ -178,7 +178,7 @@ templ profileContent(user *db.User) {
 
 			</form>
 
-			<div class="mt-6 flex gap-6 text-xs text-[#63685F]">
+			<div class="mt-6 flex flex-wrap gap-x-6 gap-y-1 text-xs text-[#63685F]">
 				<p>Member since { formatDate(user.CreatedAt) }</p>
 				<p>Last updated { formatDate(user.UpdatedAt) }</p>
 			</div>
@@ -188,28 +188,28 @@ templ profileContent(user *db.User) {
 }
 
 templ ordersContent() {
-	<section data-show="$activetab === 'orders'" class="px-10 py-8">
+	<section data-show="$activetab === 'orders'" class="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8">
 		<h1 class="text-2xl font-semibold tracking-tight text-[#20231F]">Orders</h1>
 		<p class="mt-2 text-sm text-[#63685F]">Your order history will show up here.</p>
 	</section>
 }
 
 templ messagesContent() {
-	<section data-show="$activetab === 'messages'" class="px-10 py-8">
+	<section data-show="$activetab === 'messages'" class="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8">
 		<h1 class="text-2xl font-semibold tracking-tight text-[#20231F]">Messages</h1>
 		<p class="mt-2 text-sm text-[#63685F]">Your conversations will show up here.</p>
 	</section>
 }
 
 templ reviewsContent() {
-	<section data-show="$activetab === 'reviews'" class="px-10 py-8">
+	<section data-show="$activetab === 'reviews'" class="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8">
 		<h1 class="text-2xl font-semibold tracking-tight text-[#20231F]">My reviews</h1>
 		<p class="mt-2 text-sm text-[#63685F]">Reviews you've written will show up here.</p>
 	</section>
 }
 
 templ ProfileRenderer(user *db.User, tab string) {
-	@Html("Profile", user){
+	@Html("Profile", user, "profile"){
 		@profile(user, tab)
 	}
 }
