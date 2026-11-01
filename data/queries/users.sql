@@ -157,7 +157,7 @@ FROM products
 WHERE id = $1;
 
 -- name: ListProductVariants :many
-SELECT color, size, stock, COALESCE(price_override, 0)::float8 AS price_override
+SELECT id, color, size, stock, COALESCE(price_override, 0)::float8 AS price_override
 FROM product_variants
 WHERE product_id = $1
 ORDER BY id;
@@ -248,3 +248,80 @@ INSERT INTO product_stats (product_id, day, purchases)
 VALUES ($1, CURRENT_DATE, $2)
 ON CONFLICT (product_id, day)
 DO UPDATE SET purchases = product_stats.purchases + $2;
+
+-- name: ListProductStats :many
+SELECT product_id, day, views, carts, purchases FROM product_stats WHERE day >= CURRENT_DATE - 6;
+
+-- name: GetProductDetail :one
+SELECT
+    p.id,
+    p.name,
+    COALESCE(p.description, '')::text AS description,
+    p.base_price::float8 AS price,
+    c.name AS category_name,
+    COALESCE((
+        SELECT AVG(pr.rating)
+        FROM product_reviews pr
+        WHERE pr.product_id = p.id
+    ), 0)::float8 AS rating,
+    (
+        SELECT COUNT(*)
+        FROM product_reviews pr
+        WHERE pr.product_id = p.id
+    )::int AS review_count,
+    COALESCE((
+        SELECT SUM(pv.stock)
+        FROM product_variants pv
+        WHERE pv.product_id = p.id
+    ), 0)::int AS stock
+FROM products p
+JOIN categories c ON c.id = p.category_id
+WHERE p.id = $1
+  AND p.is_active = TRUE
+  AND c.is_active = TRUE;
+
+-- name: ListProductReviews :many
+SELECT
+    pr.id,
+    pr.rating,
+    COALESCE(pr.review_text, '')::text AS review_text,
+    pr.created_at,
+    u.name AS customer_name
+FROM product_reviews pr
+JOIN users u ON u.id = pr.customer_id
+WHERE pr.product_id = $1
+ORDER BY pr.created_at DESC;
+
+-- name: CreateProductReview :one
+INSERT INTO product_reviews (product_id, customer_id, rating, review_text)
+VALUES ($1, $2, $3, $4)
+RETURNING id, product_id, customer_id, rating, review_text, created_at, updated_at;
+
+-- name: HasDeliveredProduct :one
+SELECT EXISTS (
+    SELECT 1
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    JOIN product_variants pv ON pv.id = oi.variant_id
+    WHERE o.customer_id = $1
+      AND pv.product_id = $2
+      AND o.status = 'delivered'
+) AS delivered;
+
+-- name: AddToCart :one
+INSERT INTO cart_items (customer_id, variant_id, quantity)
+SELECT sqlc.arg('customer_id')::int, pv.id, LEAST(sqlc.arg('quantity')::int, pv.stock)
+FROM product_variants pv
+WHERE pv.id = sqlc.arg('variant_id')::int
+  AND pv.stock > 0
+ON CONFLICT (customer_id, variant_id)
+DO UPDATE SET quantity = LEAST(
+    cart_items.quantity + EXCLUDED.quantity,
+    (SELECT stock FROM product_variants WHERE id = EXCLUDED.variant_id)
+)
+RETURNING
+    id,
+    variant_id,
+    quantity,
+    COALESCE((SELECT stock FROM product_variants WHERE id = cart_items.variant_id), 0)::int AS stock,
+    COALESCE((SELECT product_id FROM product_variants WHERE id = cart_items.variant_id), 0)::int AS product_id;

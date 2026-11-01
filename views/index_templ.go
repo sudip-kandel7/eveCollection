@@ -14,7 +14,7 @@ import (
 	"github.com/sudip-kandel7/eveCollection/internal/db"
 )
 
-func index(categories []db.ListCategoriesWithProductsRow, productsCard []db.ListProductsCardRow) templ.Component {
+func index(categories []db.ListCategoriesWithProductsRow, trendingCards []db.ListProductsCardRow, productsCard []db.ListProductsCardRow) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -39,7 +39,7 @@ func index(categories []db.ListCategoriesWithProductsRow, productsCard []db.List
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = trending(productsCard).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = trending(trendingCards).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -731,7 +731,7 @@ func productCard(p db.ListProductsCardRow) templ.Component {
 	})
 }
 
-func IndexRenderer(user *db.User, categories []db.ListCategoriesWithProductsRow, productsCard []db.ListProductsCardRow) templ.Component {
+func IndexRenderer(user *db.User, categories []db.ListCategoriesWithProductsRow, trendingCards []db.ListProductsCardRow, productsCard []db.ListProductsCardRow) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -764,7 +764,7 @@ func IndexRenderer(user *db.User, categories []db.ListCategoriesWithProductsRow,
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = index(categories, productsCard).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = index(categories, trendingCards, productsCard).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

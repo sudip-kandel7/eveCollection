@@ -11,6 +11,52 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addToCart = `-- name: AddToCart :one
+INSERT INTO cart_items (customer_id, variant_id, quantity)
+SELECT $1::int, pv.id, LEAST($2::int, pv.stock)
+FROM product_variants pv
+WHERE pv.id = $3::int
+  AND pv.stock > 0
+ON CONFLICT (customer_id, variant_id)
+DO UPDATE SET quantity = LEAST(
+    cart_items.quantity + EXCLUDED.quantity,
+    (SELECT stock FROM product_variants WHERE id = EXCLUDED.variant_id)
+)
+RETURNING
+    id,
+    variant_id,
+    quantity,
+    COALESCE((SELECT stock FROM product_variants WHERE id = cart_items.variant_id), 0)::int AS stock,
+    COALESCE((SELECT product_id FROM product_variants WHERE id = cart_items.variant_id), 0)::int AS product_id
+`
+
+type AddToCartParams struct {
+	CustomerID int32
+	Quantity   int32
+	VariantID  int32
+}
+
+type AddToCartRow struct {
+	ID        int32
+	VariantID int32
+	Quantity  int32
+	Stock     int32
+	ProductID int32
+}
+
+func (q *Queries) AddToCart(ctx context.Context, arg AddToCartParams) (AddToCartRow, error) {
+	row := q.db.QueryRow(ctx, addToCart, arg.CustomerID, arg.Quantity, arg.VariantID)
+	var i AddToCartRow
+	err := row.Scan(
+		&i.ID,
+		&i.VariantID,
+		&i.Quantity,
+		&i.Stock,
+		&i.ProductID,
+	)
+	return i, err
+}
+
 const categoryNameTaken = `-- name: CategoryNameTaken :one
 SELECT EXISTS( SELECT 1 FROM categories WHERE name = $1 ) AS taken
 `
@@ -130,6 +176,39 @@ type CreateProductImageParams struct {
 func (q *Queries) CreateProductImage(ctx context.Context, arg CreateProductImageParams) error {
 	_, err := q.db.Exec(ctx, createProductImage, arg.ProductID, arg.ImageUrl, arg.SortOrder)
 	return err
+}
+
+const createProductReview = `-- name: CreateProductReview :one
+INSERT INTO product_reviews (product_id, customer_id, rating, review_text)
+VALUES ($1, $2, $3, $4)
+RETURNING id, product_id, customer_id, rating, review_text, created_at, updated_at
+`
+
+type CreateProductReviewParams struct {
+	ProductID  int32
+	CustomerID int32
+	Rating     int32
+	ReviewText pgtype.Text
+}
+
+func (q *Queries) CreateProductReview(ctx context.Context, arg CreateProductReviewParams) (ProductReview, error) {
+	row := q.db.QueryRow(ctx, createProductReview,
+		arg.ProductID,
+		arg.CustomerID,
+		arg.Rating,
+		arg.ReviewText,
+	)
+	var i ProductReview
+	err := row.Scan(
+		&i.ID,
+		&i.ProductID,
+		&i.CustomerID,
+		&i.Rating,
+		&i.ReviewText,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const createProductTag = `-- name: CreateProductTag :exec
@@ -325,6 +404,62 @@ func (q *Queries) GetProduct(ctx context.Context, id int32) (GetProductRow, erro
 	return i, err
 }
 
+const getProductDetail = `-- name: GetProductDetail :one
+SELECT
+    p.id,
+    p.name,
+    COALESCE(p.description, '')::text AS description,
+    p.base_price::float8 AS price,
+    c.name AS category_name,
+    COALESCE((
+        SELECT AVG(pr.rating)
+        FROM product_reviews pr
+        WHERE pr.product_id = p.id
+    ), 0)::float8 AS rating,
+    (
+        SELECT COUNT(*)
+        FROM product_reviews pr
+        WHERE pr.product_id = p.id
+    )::int AS review_count,
+    COALESCE((
+        SELECT SUM(pv.stock)
+        FROM product_variants pv
+        WHERE pv.product_id = p.id
+    ), 0)::int AS stock
+FROM products p
+JOIN categories c ON c.id = p.category_id
+WHERE p.id = $1
+  AND p.is_active = TRUE
+  AND c.is_active = TRUE
+`
+
+type GetProductDetailRow struct {
+	ID           int32
+	Name         string
+	Description  string
+	Price        float64
+	CategoryName string
+	Rating       float64
+	ReviewCount  int32
+	Stock        int32
+}
+
+func (q *Queries) GetProductDetail(ctx context.Context, id int32) (GetProductDetailRow, error) {
+	row := q.db.QueryRow(ctx, getProductDetail, id)
+	var i GetProductDetailRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.Price,
+		&i.CategoryName,
+		&i.Rating,
+		&i.ReviewCount,
+		&i.Stock,
+	)
+	return i, err
+}
+
 const getUser = `-- name: GetUser :one
 SELECT id, name, email
 FROM users
@@ -450,6 +585,30 @@ func (q *Queries) GetUserRole(ctx context.Context, id int32) (string, error) {
 	return role, err
 }
 
+const hasDeliveredProduct = `-- name: HasDeliveredProduct :one
+SELECT EXISTS (
+    SELECT 1
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    JOIN product_variants pv ON pv.id = oi.variant_id
+    WHERE o.customer_id = $1
+      AND pv.product_id = $2
+      AND o.status = 'delivered'
+) AS delivered
+`
+
+type HasDeliveredProductParams struct {
+	CustomerID int32
+	ProductID  int32
+}
+
+func (q *Queries) HasDeliveredProduct(ctx context.Context, arg HasDeliveredProductParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasDeliveredProduct, arg.CustomerID, arg.ProductID)
+	var delivered bool
+	err := row.Scan(&delivered)
+	return delivered, err
+}
+
 const listCategoriesWithPC = `-- name: ListCategoriesWithPC :many
 SELECT c.id, c.name, c.image_url, c.is_active, c.created_at, c.updated_at, COUNT(p.id) AS product_count FROM categories c LEFT JOIN products p ON p.category_id = c.id GROUP BY c.id, c.name, c.image_url, c.is_active, c.created_at, c.updated_at ORDER BY c.name
 `
@@ -565,6 +724,83 @@ func (q *Queries) ListProductImages(ctx context.Context, productID int32) ([]str
 	return items, nil
 }
 
+const listProductReviews = `-- name: ListProductReviews :many
+SELECT
+    pr.id,
+    pr.rating,
+    COALESCE(pr.review_text, '')::text AS review_text,
+    pr.created_at,
+    u.name AS customer_name
+FROM product_reviews pr
+JOIN users u ON u.id = pr.customer_id
+WHERE pr.product_id = $1
+ORDER BY pr.created_at DESC
+`
+
+type ListProductReviewsRow struct {
+	ID           int32
+	Rating       int32
+	ReviewText   string
+	CreatedAt    pgtype.Timestamp
+	CustomerName string
+}
+
+func (q *Queries) ListProductReviews(ctx context.Context, productID int32) ([]ListProductReviewsRow, error) {
+	rows, err := q.db.Query(ctx, listProductReviews, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListProductReviewsRow
+	for rows.Next() {
+		var i ListProductReviewsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Rating,
+			&i.ReviewText,
+			&i.CreatedAt,
+			&i.CustomerName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProductStats = `-- name: ListProductStats :many
+SELECT product_id, day, views, carts, purchases FROM product_stats WHERE day >= CURRENT_DATE - 6
+`
+
+func (q *Queries) ListProductStats(ctx context.Context) ([]ProductStat, error) {
+	rows, err := q.db.Query(ctx, listProductStats)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ProductStat
+	for rows.Next() {
+		var i ProductStat
+		if err := rows.Scan(
+			&i.ProductID,
+			&i.Day,
+			&i.Views,
+			&i.Carts,
+			&i.Purchases,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listProductTags = `-- name: ListProductTags :many
 SELECT t.name
 FROM tags t
@@ -594,13 +830,14 @@ func (q *Queries) ListProductTags(ctx context.Context, productID int32) ([]strin
 }
 
 const listProductVariants = `-- name: ListProductVariants :many
-SELECT color, size, stock, COALESCE(price_override, 0)::float8 AS price_override
+SELECT id, color, size, stock, COALESCE(price_override, 0)::float8 AS price_override
 FROM product_variants
 WHERE product_id = $1
 ORDER BY id
 `
 
 type ListProductVariantsRow struct {
+	ID            int32
 	Color         pgtype.Text
 	Size          pgtype.Text
 	Stock         int32
@@ -617,6 +854,7 @@ func (q *Queries) ListProductVariants(ctx context.Context, productID int32) ([]L
 	for rows.Next() {
 		var i ListProductVariantsRow
 		if err := rows.Scan(
+			&i.ID,
 			&i.Color,
 			&i.Size,
 			&i.Stock,

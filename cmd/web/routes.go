@@ -46,6 +46,9 @@ func (app *Application) routes() http.Handler {
 
 	mux.Handle("GET /products/{id}", http.HandlerFunc(app.ProductDetails))
 
+	mux.Handle("POST /addReview", app.requireAuth(http.HandlerFunc(app.AddReview)))
+	mux.Handle("POST /add/cart", app.requireAuth(http.HandlerFunc(app.AddToCart)))
+
 	mux.Handle("GET /products/filter", http.HandlerFunc(app.ProductsFilter))
 
 	return mux

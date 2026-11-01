@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source "../../../views/**/*.templ";
 
 /* Category filters: a small slide/fade while the panel expands. */
 .category-panel {

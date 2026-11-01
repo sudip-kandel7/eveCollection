@@ -6,9 +6,9 @@ import (
 	"github.com/sudip-kandel7/eveCollection/internal/db"
 )
 
-templ index(categories []db.ListCategoriesWithProductsRow, productsCard []db.ListProductsCardRow) {
+templ index(categories []db.ListCategoriesWithProductsRow, trendingCards []db.ListProductsCardRow, productsCard []db.ListProductsCardRow) {
 	@hero()
-	@trending(productsCard)
+	@trending(trendingCards)
 	@collection(categories, productsCard)
 }
 
@@ -354,9 +354,9 @@ templ productCard(p db.ListProductsCardRow) {
 	</a>
 }
 
-templ IndexRenderer(user *db.User, categories []db.ListCategoriesWithProductsRow, productsCard []db.ListProductsCardRow) {
+templ IndexRenderer(user *db.User, categories []db.ListCategoriesWithProductsRow, trendingCards []db.ListProductsCardRow, productsCard []db.ListProductsCardRow) {
 	@Html("Eve collection", user, "home") {
-		@index(categories, productsCard)
+		@index(categories, trendingCards, productsCard)
 	}
 }
 

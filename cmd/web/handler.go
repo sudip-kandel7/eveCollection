@@ -10,8 +10,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/starfederation/datastar-go/datastar"
+	"github.com/sudip-kandel7/eveCollection/internal/algorithms"
 	"github.com/sudip-kandel7/eveCollection/internal/db"
-	"github.com/sudip-kandel7/eveCollection/internal/hash"
 	"github.com/sudip-kandel7/eveCollection/internal/validator"
 	"github.com/sudip-kandel7/eveCollection/views"
 	"github.com/sudip-kandel7/eveCollection/views/components"
@@ -56,6 +56,62 @@ type profileForm struct {
 	validator.Validator `form:"-"`
 }
 
+type VariantForm struct {
+	Color string `form:"color"`
+	Size  string `form:"size"`
+	Stock string `form:"stock"`
+	Price string `form:"price"`
+}
+
+type ProductForm struct {
+	Name                string        `form:"name"`
+	CategoryID          string        `form:"category_id"`
+	Description         string        `form:"description"`
+	BasePrice           string        `form:"base_price"`
+	IsActive            string        `form:"is_active"`
+	Tags                []string      `form:"tags[]"`
+	ExistingImages      []string      `form:"existing_images[]"`
+	Variants            []VariantForm `form:"variants"`
+	validator.Validator `form:"-"`
+}
+
+type parsedVariant struct {
+	size  string
+	color string
+	stock int32
+	price pgtype.Numeric
+}
+
+type parsedProduct struct {
+	categoryID int32
+	basePrice  float64
+	tags       []string
+	variants   []parsedVariant
+}
+
+const (
+	maxImageBytes    = 2 << 20
+	maxProductImages = 7
+	maxProductTags   = 10
+	maxProductName   = 100
+	maxDescription   = 2000
+	maxMoney         = 50000.0
+	maxVariants      = 50
+	maxReviewText    = 1000
+)
+
+type reviewForm struct {
+	ProductID           string `form:"product_id"`
+	Rating              string `form:"rating"`
+	ReviewText          string `form:"review_text"`
+	validator.Validator `form:"-"`
+}
+
+type cartForm struct {
+	VariantID string `form:"variant_id"`
+	Quantity  string `form:"quantity"`
+}
+
 func (app *Application) Home(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r)
 
@@ -75,12 +131,238 @@ func (app *Application) Home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	component := views.IndexRenderer(user, categories, productsCard)
+	productStats, err := app.queries.ListProductStats(r.Context())
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	ranked := algorithms.TopTrending(productStats, 5)
+
+	cardByID := make(map[int32]db.ListProductsCardRow, len(productsCard))
+	for _, card := range productsCard {
+		cardByID[card.ID] = card
+	}
+
+	trendingCards := make([]db.ListProductsCardRow, 0, len(ranked))
+	for _, product := range ranked {
+		if card, ok := cardByID[product.ProductID]; ok {
+			trendingCards = append(trendingCards, card)
+		}
+	}
+
+	component := views.IndexRenderer(user, categories, trendingCards, productsCard)
 
 	err = component.Render(r.Context(), w)
 	if err != nil {
 		app.serverError(w, r, err)
 	}
+}
+
+func (app *Application) ProductDetails(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 32)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	images, err := app.queries.ListProductImages(r.Context(), int32(id))
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	productDetails, err := app.queries.GetProductDetail(r.Context(), int32(id))
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	productReviews, err := app.queries.ListProductReviews(r.Context(), int32(id))
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	variants, err := app.queries.ListProductVariants(r.Context(), int32(id))
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	productsCard, err := app.queries.ListProductsCard(r.Context(), db.ListProductsCardParams{
+		Category: 0,
+		Terms:    []string{},
+		Sort:     "Featured",
+	})
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	user := app.contextGetUser(r)
+
+	canReview := false
+	if user != nil {
+		canReview, err = app.queries.HasDeliveredProduct(r.Context(), db.HasDeliveredProductParams{
+			CustomerID: user.ID,
+			ProductID:  int32(id),
+		})
+		if err != nil {
+			app.serverError(w, r, err)
+			return
+		}
+	}
+
+	component := views.ProductDetailRenderer(user, productDetails, images, productReviews, variants, productsCard, canReview)
+
+	err = component.Render(r.Context(), w)
+	if err != nil {
+		app.serverError(w, r, err)
+	}
+}
+
+func (app *Application) AddReview(w http.ResponseWriter, r *http.Request) {
+	user := app.contextGetUser(r)
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	var form reviewForm
+	if err := app.decodePostForm(r, &form); err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	productID, err := strconv.ParseInt(strings.TrimSpace(form.ProductID), 10, 32)
+	if err != nil || productID <= 0 {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	productDetails, err := app.queries.GetProductDetail(r.Context(), int32(productID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			app.clientError(w, http.StatusNotFound)
+			return
+		}
+		app.serverError(w, r, err)
+		return
+	}
+
+	form.Rating = strings.TrimSpace(form.Rating)
+	form.ReviewText = strings.TrimSpace(form.ReviewText)
+
+	rating, ratingErr := strconv.Atoi(form.Rating)
+	if ratingErr != nil {
+		rating = 0
+	}
+
+	form.CheckField(rating >= 1 && rating <= 5, "rating", "Please choose a rating between 1 and 5")
+	form.CheckField(validator.MaxChars(form.ReviewText, maxReviewText), "review_text",
+		fmt.Sprintf("Review cannot exceed %d characters", maxReviewText))
+
+	delivered, err := app.queries.HasDeliveredProduct(r.Context(), db.HasDeliveredProductParams{
+		CustomerID: user.ID,
+		ProductID:  int32(productID),
+	})
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+	form.CheckField(delivered, "order", "You can review this product only after your order is delivered.")
+
+	if !form.Valid() {
+		sse := datastar.NewSSE(w, r)
+		sse.PatchElementTempl(components.ReviewErr(form.FieldErrors), datastar.WithSelectorID("err-review"), datastar.WithModeOuter())
+		sse.PatchSignals([]byte(`{"reviewSubmitting": false}`))
+		return
+	}
+
+	_, err = app.queries.CreateProductReview(r.Context(), db.CreateProductReviewParams{
+		ProductID:  int32(productID),
+		CustomerID: user.ID,
+		Rating:     int32(rating),
+		ReviewText: pgtype.Text{String: form.ReviewText, Valid: form.ReviewText != ""},
+	})
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	productDetails, err = app.queries.GetProductDetail(r.Context(), int32(productID))
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	productReviews, err := app.queries.ListProductReviews(r.Context(), int32(productID))
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r)
+	sse.PatchElementTempl(views.RatingSummary(productDetails), datastar.WithSelectorID("rating-summary"), datastar.WithModeOuter())
+	sse.PatchElementTempl(views.ReviewSection(user, productDetails, productReviews, true), datastar.WithSelectorID("review-section"), datastar.WithModeOuter())
+	sse.PatchSignals([]byte(`{"reviewRating": 0, "reviewHover": 0, "reviewText": "", "reviewSubmitting": false}`))
+}
+
+func (app *Application) AddToCart(w http.ResponseWriter, r *http.Request) {
+	user := app.contextGetUser(r)
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	var form cartForm
+	if err := app.decodePostForm(r, &form); err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	variantID, variantErr := strconv.ParseInt(strings.TrimSpace(form.VariantID), 10, 32)
+	quantity, quantityErr := strconv.Atoi(strings.TrimSpace(form.Quantity))
+	if variantErr != nil || variantID <= 0 || quantityErr != nil || quantity <= 0 {
+		sse := datastar.NewSSE(w, r)
+		sse.PatchSignals([]byte(`{"cartSubmitting": false, "cartMessage": "Please choose a valid variant and quantity.", "cartError": true}`))
+		return
+	}
+
+	row, err := app.queries.AddToCart(r.Context(), db.AddToCartParams{
+		CustomerID: user.ID,
+		VariantID:  int32(variantID),
+		Quantity:   int32(quantity),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			sse := datastar.NewSSE(w, r)
+			sse.PatchSignals([]byte(`{"cartSubmitting": false, "cartMessage": "This variant is sold out or unavailable.", "cartError": true}`))
+			return
+		}
+		app.serverError(w, r, err)
+		return
+	}
+
+	message := fmt.Sprintf("Added to cart - %d in cart", row.Quantity)
+	if row.Quantity >= row.Stock {
+		message = fmt.Sprintf("Cart is at max available (%d)", row.Stock)
+	}
+
+	signals, err := json.Marshal(map[string]any{
+		"quantity":       1,
+		"cartSubmitting": false,
+		"cartMessage":    message,
+		"cartError":      false,
+	})
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r)
+	sse.PatchSignals(signals)
 }
 
 func (app *Application) ProductsFilter(w http.ResponseWriter, r *http.Request) {
@@ -271,7 +553,7 @@ func (app *Application) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashedPassword, salt, err := hash.HashPassword(form.Password)
+	hashedPassword, salt, err := algorithms.HashPassword(form.Password)
 
 	if err != nil {
 		app.serverError(w, r, err)
@@ -351,7 +633,7 @@ func (app *Application) Signin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	valid := hash.VerifyPassword(form.Password, user.Salt, user.PasswordHash)
+	valid := algorithms.VerifyPassword(form.Password, user.Salt, user.PasswordHash)
 
 	if !valid {
 		form.AddNonFieldError("Invalid credentials")
@@ -446,7 +728,7 @@ func (app *Application) AdminSignin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	valid := hash.VerifyPassword(form.Password, user.Salt, user.PasswordHash)
+	valid := algorithms.VerifyPassword(form.Password, user.Salt, user.PasswordHash)
 	if !valid {
 		fail()
 		return
@@ -951,49 +1233,6 @@ func (app *Application) DeleteCategory(w http.ResponseWriter, r *http.Request) {
 	sse.PatchSignals([]byte(`{"formmode":"create","categoryid":"0","catname":"","catimage":"","catpreview":"","catactive":true,"submitting":false}`))
 }
 
-type VariantForm struct {
-	Color string `form:"color"`
-	Size  string `form:"size"`
-	Stock string `form:"stock"`
-	Price string `form:"price"`
-}
-
-type ProductForm struct {
-	Name                string        `form:"name"`
-	CategoryID          string        `form:"category_id"`
-	Description         string        `form:"description"`
-	BasePrice           string        `form:"base_price"`
-	IsActive            string        `form:"is_active"`
-	Tags                []string      `form:"tags[]"`
-	ExistingImages      []string      `form:"existing_images[]"`
-	Variants            []VariantForm `form:"variants"`
-	validator.Validator `form:"-"`
-}
-
-type parsedVariant struct {
-	size  string
-	color string
-	stock int32
-	price pgtype.Numeric
-}
-
-type parsedProduct struct {
-	categoryID int32
-	basePrice  float64
-	tags       []string
-	variants   []parsedVariant
-}
-
-const (
-	maxImageBytes    = 2 << 20
-	maxProductImages = 7
-	maxProductTags   = 10
-	maxProductName   = 100
-	maxDescription   = 2000
-	maxMoney         = 50000.0
-	maxVariants      = 50
-)
-
 func validateProductImages(r *http.Request, form *ProductForm) []*multipart.FileHeader {
 	if r.MultipartForm == nil {
 		return nil
@@ -1159,8 +1398,8 @@ func (app *Application) validateProduct(r *http.Request, form *ProductForm, prod
 		stock := int32(0)
 		if parsed, err := strconv.Atoi(strings.TrimSpace(v.Stock)); err != nil {
 			form.AddFieldError("variants", "Stock must be a whole number")
-		} else if !validator.PositiveInt(parsed) {
-			form.AddFieldError("variants", "Stock must be 1 or more")
+		} else if parsed < 0 {
+			form.AddFieldError("variants", "Stock cannot be negative")
 		} else {
 			stock = int32(parsed)
 		}
@@ -1627,13 +1866,4 @@ func (app *Application) EditProductForm(w http.ResponseWriter, r *http.Request) 
 	sse.PatchElementTempl(views.ProductVariantRows(variants), datastar.WithSelectorID("variants-container"), datastar.WithModeInner())
 	sse.PatchElementTempl(views.ProductTagChips(tags), datastar.WithSelectorID("tags"), datastar.WithModeInner())
 	sse.ExecuteScript("setExistingImages(" + string(imageURLs) + "); syncVariantIndex()")
-}
-
-func (app *Application) ProductDetails(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-
-	fmt.Fprintf(w, "Product ID: %s", id)
-
-	
-
 }
