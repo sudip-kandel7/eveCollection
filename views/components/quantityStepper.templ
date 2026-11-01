@@ -1,0 +1,45 @@
+package components
+
+import "strconv"
+
+templ QuantityStepper(signal string, initial int, maxExpr string, availableExpr string, label string) {
+	<div class="mt-7">
+		if label != "" {
+			<p class="text-sm font-medium text-[#4A5443]">{ label }</p>
+		}
+		<div class="mt-2 inline-flex h-11 items-center rounded-xl border border-[#DCE2D7] bg-white">
+			<button
+				type="button"
+				data-on:click={ quantityDecreaseExpr(signal) }
+				data-attr:disabled={ "$" + signal + " <= 1 || !(" + availableExpr + ")" }
+				class="flex h-full w-11 items-center justify-center text-lg font-semibold text-[#4A5443] transition hover:bg-[#F3F5F0] disabled:cursor-not-allowed disabled:text-[#B0B7AA] disabled:hover:bg-transparent"
+				aria-label="Decrease quantity"
+			>
+				−
+			</button>
+			<span
+				class="flex h-full w-12 items-center justify-center border-x border-[#E5E8DF] text-sm font-semibold text-[#20231F]"
+				data-text={ "$" + signal }
+			>
+				{ strconv.Itoa(initial) }
+			</span>
+			<button
+				type="button"
+				data-on:click={ quantityIncreaseExpr(signal, maxExpr) }
+				data-attr:disabled={ "!(" + availableExpr + ") || $" + signal + " >= (" + maxExpr + ")" }
+				class="flex h-full w-11 items-center justify-center text-lg font-semibold text-[#4A5443] transition hover:bg-[#F3F5F0] disabled:cursor-not-allowed disabled:text-[#B0B7AA] disabled:hover:bg-transparent"
+				aria-label="Increase quantity"
+			>
+				+
+			</button>
+		</div>
+	</div>
+}
+
+func quantityDecreaseExpr(signal string) string {
+	return "$" + signal + " = Math.max(1, $" + signal + " - 1)"
+}
+
+func quantityIncreaseExpr(signal, maxExpr string) string {
+	return "$" + signal + " = Math.max(1, Math.min($" + signal + " + 1, " + maxExpr + "))"
+}

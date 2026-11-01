@@ -31,6 +31,7 @@ func (app *Application) routes() http.Handler {
 	mux.Handle("POST /profile", app.requireAuth(http.HandlerFunc(app.updateProfile)))
 
 	mux.Handle("GET /orders", app.requireAuth(http.HandlerFunc(app.Orders)))
+	mux.Handle("GET /cart", app.requireAuth(http.HandlerFunc(app.Cart)))
 	mux.Handle("GET /messages", app.requireAuth(http.HandlerFunc(app.Messages)))
 	mux.Handle("GET /reviews", app.requireAuth(http.HandlerFunc(app.Reviews)))
 

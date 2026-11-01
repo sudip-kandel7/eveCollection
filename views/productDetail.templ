@@ -1,0 +1,621 @@
+package views
+
+import (
+	"encoding/json"
+	"strconv"
+
+	"github.com/sudip-kandel7/eveCollection/internal/db"
+	"github.com/sudip-kandel7/eveCollection/views/components"
+)
+
+func productImages(images []string) []string {
+	return images
+}
+
+func primaryProductImage(images []string) string {
+	return productImages(images)[0]
+}
+
+type variantSignal struct {
+	ID         int32   `json:"id"`
+	Stock      int32   `json:"stock"`
+	Price      float64 `json:"price"`
+	PriceLabel string  `json:"priceLabel"`
+}
+
+func variantKey(color, size string) string {
+	return color + "|" + size
+}
+
+func effectiveVariantPrice(basePrice float64, variant db.ListProductVariantsRow) float64 {
+	if variant.PriceOverride > 0 {
+		return variant.PriceOverride
+	}
+	return basePrice
+}
+
+func variantSignals(variants []db.ListProductVariantsRow, basePrice float64) string {
+	items := make(map[string]variantSignal, len(variants))
+	for _, variant := range variants {
+		color := textOrEmpty(variant.Color)
+		size := textOrEmpty(variant.Size)
+		if color == "" || size == "" {
+			continue
+		}
+		price := effectiveVariantPrice(basePrice, variant)
+		items[variantKey(color, size)] = variantSignal{
+			ID:         variant.ID,
+			Stock:      variant.Stock,
+			Price:      price,
+			PriceLabel: formatPrice(price),
+		}
+	}
+	data, err := json.Marshal(items)
+	if err != nil {
+		return "{}"
+	}
+	return string(data)
+}
+
+func sizesByColorSignals(variants []db.ListProductVariantsRow) string {
+	items := make(map[string][]string)
+	for _, variant := range variants {
+		color := textOrEmpty(variant.Color)
+		size := textOrEmpty(variant.Size)
+		if color == "" || size == "" || variant.Stock <= 0 {
+			continue
+		}
+		items[color] = append(items[color], size)
+	}
+	data, err := json.Marshal(items)
+	if err != nil {
+		return "{}"
+	}
+	return string(data)
+}
+
+func uniqueVariantColors(variants []db.ListProductVariantsRow) []string {
+	seen := make(map[string]bool, len(variants))
+	colors := make([]string, 0, len(variants))
+	for _, variant := range variants {
+		color := textOrEmpty(variant.Color)
+		if color == "" || seen[color] {
+			continue
+		}
+		seen[color] = true
+		colors = append(colors, color)
+	}
+	return colors
+}
+
+func uniqueVariantSizes(variants []db.ListProductVariantsRow) []string {
+	seen := make(map[string]bool, len(variants))
+	sizes := make([]string, 0, len(variants))
+	for _, variant := range variants {
+		size := textOrEmpty(variant.Size)
+		if size == "" || seen[size] {
+			continue
+		}
+		seen[size] = true
+		sizes = append(sizes, size)
+	}
+	return sizes
+}
+
+func defaultProductVariant(variants []db.ListProductVariantsRow) (db.ListProductVariantsRow, bool) {
+	for _, variant := range variants {
+		if variant.Stock > 0 {
+			return variant, true
+		}
+	}
+	for _, variant := range variants {
+		if textOrEmpty(variant.Color) != "" && textOrEmpty(variant.Size) != "" {
+			return variant, true
+		}
+	}
+	return db.ListProductVariantsRow{}, false
+}
+
+func initialVariantColor(variants []db.ListProductVariantsRow) string {
+	variant, ok := defaultProductVariant(variants)
+	if !ok {
+		return ""
+	}
+	return textOrEmpty(variant.Color)
+}
+
+func initialVariantSize(variants []db.ListProductVariantsRow) string {
+	variant, ok := defaultProductVariant(variants)
+	if !ok {
+		return ""
+	}
+	return textOrEmpty(variant.Size)
+}
+
+func selectedVariantExpr() string {
+	return "$variants[$selectedColor + '|' + $selectedSize]"
+}
+
+func selectedVariantIDExpr() string {
+	return selectedVariantExpr() + "?.id"
+}
+
+func selectedVariantAvailableExpr() string {
+	return selectedVariantExpr() + "?.stock > 0"
+}
+
+func selectedVariantStockTextExpr() string {
+	variant := selectedVariantExpr()
+	return variant + "?.stock > 0 ? (" + variant + "?.stock <= 5 ? 'Only ' + " + variant + "?.stock + ' left' : 'In stock') : 'Sold out'"
+}
+
+func variantSizeAvailableExpr(size string) string {
+	return "($variants[$selectedColor + " + strconv.Quote("|"+size) + "]?.stock ?? 0) > 0"
+}
+
+func variantColorAvailableExpr(color string) string {
+	return "($sizesByColor[" + strconv.Quote(color) + "]?.length ?? 0) > 0"
+}
+
+func variantColorSelectExpr(color string) string {
+	key := strconv.Quote(color)
+	return "$selectedColor = " + key + "; if (!($sizesByColor[" + key + "] ?? []).includes($selectedSize)) $selectedSize = ($sizesByColor[" + key + "] ?? [])[0] ?? $selectedSize" + clampQuantityExpr()
+}
+
+func variantSizeSelectExpr(size string) string {
+	return "$selectedSize = " + strconv.Quote(size) + clampQuantityExpr()
+}
+
+func clampQuantityExpr() string {
+	return "; $quantity = Math.max(1, Math.min($quantity, " + selectedVariantExpr() + "?.stock ?? 1))"
+}
+
+func thumbClass(cond string) string {
+	return `{ "border-[#283B28]": ` + cond + `, "border-transparent": !(` + cond + `) }`
+}
+
+func thumbImageClass(cond string) string {
+	return `{ "blur-none": ` + cond + `, "blur-[0.5px]": !(` + cond + `) }`
+}
+
+func optionBoxClass(cond string) string {
+	disabled := " disabled:cursor-not-allowed disabled:border-[#E5E8DF] disabled:bg-[#F3F5F0] disabled:text-[#B0B7AA] disabled:line-through disabled:hover:border-[#E5E8DF] disabled:hover:bg-[#F3F5F0]"
+	on := "flex h-11 min-w-12 items-center justify-center rounded-lg border border-[#283B28] bg-[#283B28] px-3 text-sm font-semibold text-[#F7F8F5] transition" + disabled
+	off := "flex h-11 min-w-12 items-center justify-center rounded-lg border border-[#DCE2D7] bg-white px-3 text-sm font-medium text-[#4A5443] transition hover:border-[#283B28]/40 hover:bg-[#F3F5F0]" + disabled
+	return cond + " ? " + strconv.Quote(on) + " : " + strconv.Quote(off)
+}
+
+func reviewStarFilledExpr(star int) string {
+	i := strconv.Itoa(star)
+	return "$reviewHover > 0 ? $reviewHover >= " + i + " : $reviewRating >= " + i
+}
+
+func reviewCountText(n int) string {
+	if n == 1 {
+		return "1 review"
+	}
+	return strconv.Itoa(n) + " reviews"
+}
+
+func reviewBasedOn(n int) string {
+	return "Based on " + reviewCountText(n)
+}
+
+func starFill(rating float64, index int) float64 {
+	fill := rating - float64(index-1)
+	if fill < 0 {
+		return 0
+	}
+	if fill > 1 {
+		return 1
+	}
+	return fill
+}
+
+templ productDetail(user *db.User, productDetails db.GetProductDetailRow, images []string, productReviews []db.ListProductReviewsRow, variants []db.ListProductVariantsRow, productsCard []db.ListProductsCardRow, canReview bool) {
+	<div
+		class="bg-[#F7F8F5]"
+		style="font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;"
+		data-signals:active-image={ "'" + primaryProductImage(images) + "'" }
+		data-signals:variants={ variantSignals(variants, productDetails.Price) }
+		data-signals:sizes-by-color={ sizesByColorSignals(variants) }
+		data-signals:selected-size={ strconv.Quote(initialVariantSize(variants)) }
+		data-signals:selected-color={ strconv.Quote(initialVariantColor(variants)) }
+		data-signals:quantity="1"
+		data-signals:review-rating="0"
+		data-signals:review-hover="0"
+		data-signals:review-text="''"
+		data-signals:review-submitting="false"
+		data-signals:cart-submitting="false"
+		data-signals:cart-message="''"
+		data-signals:cart-error="false"
+	>
+		<div class="mx-auto max-w-7xl px-5 pb-16 pt-6 sm:px-8 sm:pt-8">
+			<a
+				href="/#collection"
+				class="group ml-1.5 inline-flex items-center gap-2 text-sm font-medium text-[#8A9285] transition hover:text-black"
+			>
+				<svg
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					class="h-4 w-4 transition group-hover:text-black"
+					aria-hidden="true"
+				>
+					<path d="M19 12H5M11 6l-6 6 6 6"></path>
+				</svg>
+				<span>Back to collection</span>
+			</a>
+			<section class="mt-6 grid grid-cols-1 gap-8 lg:mt-8 lg:grid-cols-2 lg:items-stretch lg:gap-12">
+				<div class="flex h-full min-h-[420px] gap-3 sm:gap-4">
+					<div class="flex w-14 shrink-0 flex-col gap-2.5 overflow-y-auto sm:w-20 sm:gap-3">
+						for _, image := range productImages(images) {
+							<button
+								type="button"
+								data-on:click={ "$activeImage = '" + image + "'" }
+								data-class={ thumbClass("$activeImage === '" + image + "'") }
+								class="group relative aspect-square w-full overflow-hidden rounded-xl border-2 border-transparent bg-[#F0EFE9] p-1 transition hover:opacity-90"
+								aria-label="View product image"
+							>
+								<img
+									src={ image }
+									alt=""
+									data-class={ thumbImageClass("$activeImage === '" + image + "'") }
+									class="h-full w-full rounded-lg object-cover blur-[0.5px] transition duration-200 group-hover:blur-none"
+								/>
+							</button>
+						}
+					</div>
+					<div class="relative min-h-[420px] flex-1 overflow-hidden rounded-2xl bg-[#F0EFE9]">
+						<img
+							src={ primaryProductImage(images) }
+							data-attr:src="$activeImage"
+							alt="Handwoven cotton kurta"
+							class="absolute inset-0 h-full w-full object-cover"
+						/>
+					</div>
+				</div>
+				<div class="flex flex-col">
+					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#6B7D60]">{ productDetails.CategoryName }</p>
+					<h1 class="mt-2 text-3xl font-extrabold leading-tight tracking-tight text-[#20231F] sm:text-4xl">
+						{ productDetails.Name }
+					</h1>
+					@RatingSummary(productDetails)
+					<p
+						class="mt-4 text-2xl font-bold text-[#283B28]"
+						data-text={ selectedVariantExpr() + "?.priceLabel ?? " + strconv.Quote(formatPrice(productDetails.Price)) }
+					>
+						{ formatPrice(productDetails.Price) }
+					</p>
+					<p class="mt-2 text-base font-medium text-[#8A9285]" data-text={ selectedVariantStockTextExpr() }></p>
+					<p class="mt-3 max-w-prose text-lg leading-relaxed text-[#5A6256">{ productDetails.Description }</p>
+					<div class="my-4 h-0.5 w-full bg-[#E5E8DF]"></div>
+					<p class="text-sm font-medium text-[#4A5443]">Choose size</p>
+					<div class="mt-3 flex flex-wrap gap-2.5">
+						for _, size := range uniqueVariantSizes(variants) {
+							<button
+								type="button"
+								data-on:click={ variantSizeSelectExpr(size) }
+								data-attr:class={ optionBoxClass("$selectedSize === " + strconv.Quote(size)) }
+								data-attr:disabled={ "!(" + variantSizeAvailableExpr(size) + ")" }
+								class="flex h-11 min-w-12 items-center justify-center rounded-lg border border-[#DCE2D7] bg-white px-3 text-sm font-medium text-[#4A5443] transition"
+							>
+								{ size }
+							</button>
+						}
+					</div>
+					<p class="mt-5 text-sm font-medium text-[#4A5443]">Choose color</p>
+					<div class="mt-3 flex flex-wrap gap-2.5">
+						for _, color := range uniqueVariantColors(variants) {
+							<button
+								type="button"
+								data-on:click={ variantColorSelectExpr(color) }
+								data-attr:class={ optionBoxClass("$selectedColor === " + strconv.Quote(color)) }
+								data-attr:disabled={ "!(" + variantColorAvailableExpr(color) + ")" }
+								class="flex h-11 min-w-12 items-center justify-center rounded-lg border border-[#DCE2D7] bg-white px-3 text-sm font-medium text-[#4A5443] transition"
+							>
+								{ color }
+							</button>
+						}
+					</div>
+					@components.QuantityStepper(
+						"quantity",
+						1,
+						selectedVariantExpr()+"?.stock ?? 1",
+						selectedVariantAvailableExpr(),
+						"Quantity",
+					)
+					<div class="mt-4 flex gap-3">
+						<form
+							class="flex-1"
+							data-on:submit__prevent="$cartSubmitting = true; @post('/add/cart', {contentType: 'form'})"
+						>
+							<input
+								type="hidden"
+								name="variant_id"
+								data-attr:value={ selectedVariantIDExpr() + " ?? ''" }
+							/>
+							<input
+								type="hidden"
+								name="quantity"
+								data-attr:value="$quantity"
+							/>
+							<button
+								type="submit"
+								data-attr:disabled={ "!(" + selectedVariantAvailableExpr() + ") || $cartSubmitting" }
+								class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#283B28] px-4 py-3 text-sm font-semibold text-[#F7F8F5] transition hover:bg-[#20261F] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#283B28]"
+							>
+								<svg
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									class="h-4 w-4"
+									aria-hidden="true"
+								>
+									<path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L21 8H6"></path>
+									<circle cx="10" cy="20" r="1"></circle>
+									<circle cx="18" cy="20" r="1"></circle>
+								</svg>
+								Add to cart
+							</button>
+						</form>
+						<button
+							type="button"
+							data-attr:disabled={ "!(" + selectedVariantAvailableExpr() + ")" }
+							class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#E6FF75] px-4 py-3 text-sm font-semibold text-[#20261F] transition hover:bg-[#D9F25B] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#E6FF75]"
+						>
+							Buy Now
+							<svg
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								class="h-4 w-4"
+								aria-hidden="true"
+							>
+								<path d="M5 12h14M13 6l6 6-6 6"></path>
+							</svg>
+						</button>
+					</div>
+					<p
+						id="cart-status"
+						data-show="$cartMessage !== ''"
+						data-text="$cartMessage"
+						data-attr:class="$cartError ? 'mt-3 text-sm font-medium text-red-600' : 'mt-3 text-sm font-medium text-[#283B28]'"
+						class="mt-3 text-sm font-medium text-[#283B28]"
+					></p>
+					<div class="mt-6 h-[3px] w-full bg-[#E5E8DF]"></div>
+					<button
+						type="button"
+						class="mt-4 flex w-full items-center justify-between gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-[#EEF3E7]"
+					>
+						<span class="flex items-center gap-2 text-sm font-medium text-[#4A5443]">
+							<svg
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								class="h-4 w-4"
+								aria-hidden="true"
+							>
+								<path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.4 8.6 8.6 0 0 1-3.9-.9L3 21l1.9-4.6a8.4 8.4 0 0 1-.9-3.9A8.5 8.5 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"></path>
+							</svg>
+							Chat with seller
+						</span>
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="h-4 w-4 text-[#8A9285]"
+							aria-hidden="true"
+						>
+							<path d="M5 12h14M13 6l6 6-6 6"></path>
+						</svg>
+					</button>
+				</div>
+			</section>
+			<div class="mt-12 h-0.5 w-full bg-[#E5E8DF]"></div>
+			@ReviewSection(user, productDetails, productReviews, canReview)
+			<div class="mt-14 h-0.5 w-full bg-[#E5E8DF]"></div>
+			<section class="mt-10">
+				<p class="text-xs font-bold uppercase tracking-[0.2em] text-[#6B7D60]">Picked for you</p>
+				<h2 class="mt-2 text-[30px] font-extrabold tracking-tight text-[#20231F] sm:text-4xl">
+					You may also like
+				</h2>
+				<div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4">
+					for _, product := range productsCard {
+						@productCard(product)
+					}
+				</div>
+			</section>
+		</div>
+	</div>
+}
+
+templ RatingSummary(productDetails db.GetProductDetailRow) {
+	<div id="rating-summary" class="mt-3 flex flex-wrap items-center gap-2 text-sm">
+		<svg viewBox="0 0 24 24" class="h-4 w-4 text-[#B8892E]" aria-hidden="true">
+			<path d="M12 2.5l2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.5l-5.88 3.11 1.12-6.55-4.76-4.64 6.58-.96z" fill="currentColor"></path>
+		</svg>
+		<span class="font-semibold text-[#20231F]">{ strconv.FormatFloat(productDetails.Rating, 'f', 1, 64) }</span>
+		<span class="text-[#8A9285]">{ reviewCountText(int(productDetails.ReviewCount)) }</span>
+	</div>
+}
+
+templ ReviewSection(user *db.User, productDetails db.GetProductDetailRow, productReviews []db.ListProductReviewsRow, canReview bool) {
+	<section id="review-section" class="mt-12 grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-14">
+		<div>
+			<p class="text-xs font-bold uppercase tracking-[0.2em] text-[#6B7D60]">Kind words</p>
+			<h2 class="mt-2 text-[30px] font-extrabold tracking-tight text-[#20231F] sm:text-4xl">
+				Customer reviews
+			</h2>
+			<div class="mt-5 flex items-start gap-4">
+				<span class="text-5xl font-extrabold leading-none tracking-tight text-[#20231F]">{ strconv.FormatFloat(productDetails.Rating, 'f', 1, 64) }</span>
+				<div class="pt-1">
+					<div class="flex items-center gap-1 text-[#B8892E]">
+						for i := 1; i <= 5; i++ {
+							@reviewStar(starFill(productDetails.Rating, i))
+						}
+					</div>
+					<p class="mt-1 text-xs text-[#8A9285]">{ reviewBasedOn(int(productDetails.ReviewCount)) }</p>
+				</div>
+			</div>
+			if canReview {
+				<form
+					class="mt-6 rounded-2xl border border-[#E5E8DF] bg-white p-5 sm:p-6"
+					data-on:submit__prevent="$reviewSubmitting = true; @post('/addReview', {contentType: 'form'})"
+				>
+					<input type="hidden" name="product_id" value={ strconv.Itoa(int(productDetails.ID)) }/>
+					<input type="hidden" name="rating" value="0" data-attr:value="$reviewRating"/>
+					<p class="text-[10px] font-bold uppercase tracking-[0.2em] text-[#6B7D60]">
+						Share your experience
+					</p>
+					<p class="mt-5 text-sm font-medium text-[#20231F]">Your rating</p>
+					<div class="mt-2 flex items-center gap-1" data-on:mouseleave="$reviewHover = 0">
+						for i := 1; i <= 5; i++ {
+							<button
+								type="button"
+								data-on:mouseenter={ "$reviewHover = " + strconv.Itoa(i) }
+								data-on:click={ "$reviewRating = " + strconv.Itoa(i) }
+								class="rounded-md p-0.5 text-[#B8892E] transition hover:scale-110"
+								aria-label={ "Rate " + strconv.Itoa(i) + " out of 5" }
+							>
+								<svg viewBox="0 0 24 24" class="h-7 w-7 text-[#B8892E]" aria-hidden="true">
+									<path
+										d="M12 2.5l2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.5l-5.88 3.11 1.12-6.55-4.76-4.64 6.58-.96z"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="1.8"
+										stroke-linejoin="round"
+									></path>
+									<path
+										d="M12 2.5l2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.5l-5.88 3.11 1.12-6.55-4.76-4.64 6.58-.96z"
+										fill="currentColor"
+										stroke="currentColor"
+										stroke-width="1.8"
+										stroke-linejoin="round"
+										style="display: none"
+										data-show={ reviewStarFilledExpr(i) }
+									></path>
+								</svg>
+							</button>
+						}
+					</div>
+					<p class="mt-4 text-sm text-[#8A9285]">
+						Reviewing as
+						<strong class="ml-1 font-semibold text-black">{ user.Name }</strong>
+					</p>
+					<label for="review-text" class="mt-5 block text-sm font-medium text-[#20231F]">Your review</label>
+					<textarea
+						id="review-text"
+						name="review_text"
+						rows="4"
+						data-bind:review-text
+						placeholder="Tell us what you liked..."
+						class="mt-2 w-full resize-none rounded-xl border border-[#DCE2D7] bg-[#FBFBF9] px-3.5 py-3 text-sm text-[#20231F] outline-none transition placeholder:text-[#A3AA9C] focus:border-[#283B28] focus:ring-2 focus:ring-[#283B28]/10"
+					></textarea>
+					@components.ReviewErr(nil)
+					<button
+						type="submit"
+						data-attr:disabled="$reviewRating < 1 || $reviewSubmitting"
+						class="mt-4 inline-flex items-center gap-2 rounded-full bg-[#283B28] px-5 py-2.5 text-sm font-semibold text-[#F7F8F5] transition hover:bg-[#20261F] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#283B28]"
+					>
+						Submit review
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="h-4 w-4"
+							aria-hidden="true"
+						>
+							<path d="M5 12h14M13 6l6 6-6 6"></path>
+						</svg>
+					</button>
+				</form>
+			} else if user != nil {
+				<div class="mt-6 rounded-2xl border border-[#E5E8DF] bg-white p-5 text-sm text-[#687064] sm:p-6">
+					You can review this product after your order has been delivered.
+				</div>
+			} else {
+				<div class="mt-6 rounded-2xl border border-[#E5E8DF] bg-white p-5 text-sm text-[#687064] sm:p-6">
+					Please <a href="/login" class="font-semibold text-[#283B28] underline underline-offset-4">log in</a> to write a review.
+				</div>
+			}
+		</div>
+		<div class="flex min-h-0 flex-col lg:relative lg:h-full">
+			<div class="flex h-12 shrink-0 items-center justify-between gap-4 border-b-2 border-[#E5E8DF]">
+				<h3 class="text-sm font-semibold text-[#3F4A3B]">What customers are saying</h3>
+				<span class="text-sm font-normal text-[#687064]">{ reviewCountText(len(productReviews)) }</span>
+			</div>
+			<div class="mt-4 max-h-[32rem] overflow-y-auto pr-1 lg:absolute lg:inset-x-0 lg:bottom-0 lg:top-14 lg:mt-0 lg:max-h-none lg:pr-2">
+				<div class="divide-y-2 divide-[#E5E8DF]">
+					for _, review := range productReviews {
+						<article id={ review.ID } class="py-5">
+							<div class="flex items-center justify-between gap-4">
+								<div class="flex items-center gap-1 text-[#B8892E]">
+									for i := 1; i <= 5; i++ {
+										@reviewStar(starFill(float64(review.Rating), i))
+									}
+								</div>
+								<span class="text-xs text-[#8A9285]">{ formatDate(review.CreatedAt) }</span>
+							</div>
+							if review.ReviewText != "" {
+								<p class="mt-3 text-sm leading-relaxed text-[#4A5443]">{ review.ReviewText }</p>
+							}
+							<p class="mt-3 text-sm font-semibold text-[#20231F]">{ review.CustomerName }</p>
+						</article>
+					}
+				</div>
+			</div>
+		</div>
+	</section>
+}
+
+templ reviewStar(fill float64) {
+	<span class="relative inline-block h-4 w-4 text-[#B8892E]" aria-hidden="true">
+		<svg viewBox="0 0 24 24" class="h-4 w-4">
+			<path
+				d="M12 2.5l2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.5l-5.88 3.11 1.12-6.55-4.76-4.64 6.58-.96z"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="1.8"
+				stroke-linejoin="round"
+			></path>
+		</svg>
+		if fill > 0 {
+			<span
+				class="absolute inset-y-0 left-0 overflow-hidden"
+				style={ "width: " + strconv.FormatFloat(fill*100, 'f', 1, 64) + "%" }
+			>
+				<svg viewBox="0 0 24 24" class="h-4 w-4 max-w-none">
+					<path
+						d="M12 2.5l2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.5l-5.88 3.11 1.12-6.55-4.76-4.64 6.58-.96z"
+						fill="currentColor"
+					></path>
+				</svg>
+			</span>
+		}
+	</span>
+}
+
+templ ProductDetailRenderer(user *db.User, productDetails db.GetProductDetailRow, images []string, productReviews []db.ListProductReviewsRow, variants []db.ListProductVariantsRow, productsCard []db.ListProductsCardRow, canReview bool) {
+	@Html(productDetails.Name+" | Eve Collection", user, "home") {
+		@productDetail(user, productDetails, images, productReviews, variants, productsCard, canReview)
+	}
+}

@@ -1,0 +1,15 @@
+package components
+
+templ ReviewErr(errs map[string]string) {
+	<div id="err-review" class="mt-2 text-xs text-red-600">
+		if msg, ok := errs["rating"]; ok {
+			<p>{ msg }</p>
+		}
+		if msg, ok := errs["review_text"]; ok {
+			<p>{ msg }</p>
+		}
+		if msg, ok := errs["order"]; ok {
+			<p>{ msg }</p>
+		}
+	</div>
+}

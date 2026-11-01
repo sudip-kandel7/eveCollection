@@ -418,6 +418,11 @@ func (app *Application) Orders(w http.ResponseWriter, r *http.Request) {
 	views.ProfileRenderer(user, "orders").Render(r.Context(), w)
 }
 
+func (app *Application) Cart(w http.ResponseWriter, r *http.Request) {
+	user := app.contextGetUser(r)
+	views.ProfileRenderer(user, "cart").Render(r.Context(), w)
+}
+
 func (app *Application) Reviews(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r)
 	views.ProfileRenderer(user, "review").Render(r.Context(), w)
