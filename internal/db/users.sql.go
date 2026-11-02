@@ -355,6 +355,75 @@ func (q *Queries) EmailTaken(ctx context.Context, email string) (bool, error) {
 	return taken, err
 }
 
+const getCartItems = `-- name: GetCartItems :many
+SELECT
+    ci.id,
+    ci.variant_id,
+    ci.quantity,
+    ci.added_at,
+    p.name AS product_name,
+    COALESCE(pv.size, '')  AS size,
+    COALESCE(pv.color, '') AS color,
+    pv.stock,
+    COALESCE(pv.price_override, p.base_price)::float8 AS price,
+    COALESCE(pi.image_url, '') AS image
+FROM cart_items ci
+JOIN product_variants pv ON pv.id = ci.variant_id
+JOIN products p          ON p.id = pv.product_id
+LEFT JOIN LATERAL (
+    SELECT image_url FROM product_images
+    WHERE product_id = p.id
+    ORDER BY sort_order ASC, id ASC
+    LIMIT 1
+) pi ON true
+WHERE ci.customer_id = $1
+ORDER BY ci.added_at DESC
+`
+
+type GetCartItemsRow struct {
+	ID          int32
+	VariantID   int32
+	Quantity    int32
+	AddedAt     pgtype.Timestamp
+	ProductName string
+	Size        string
+	Color       string
+	Stock       int32
+	Price       float64
+	Image       string
+}
+
+func (q *Queries) GetCartItems(ctx context.Context, customerID int32) ([]GetCartItemsRow, error) {
+	rows, err := q.db.Query(ctx, getCartItems, customerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCartItemsRow
+	for rows.Next() {
+		var i GetCartItemsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.VariantID,
+			&i.Quantity,
+			&i.AddedAt,
+			&i.ProductName,
+			&i.Size,
+			&i.Color,
+			&i.Stock,
+			&i.Price,
+			&i.Image,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getCategory = `-- name: GetCategory :one
 SELECT id, name, image_url, is_active, created_at, updated_at
 FROM categories
@@ -1106,6 +1175,21 @@ DO UPDATE SET views = product_stats.views + 1
 
 func (q *Queries) RecordProductView(ctx context.Context, productID int32) error {
 	_, err := q.db.Exec(ctx, recordProductView, productID)
+	return err
+}
+
+const removeCartItem = `-- name: RemoveCartItem :exec
+DELETE FROM cart_items
+WHERE customer_id = $1 AND variant_id = $2
+`
+
+type RemoveCartItemParams struct {
+	CustomerID int32
+	VariantID  int32
+}
+
+func (q *Queries) RemoveCartItem(ctx context.Context, arg RemoveCartItemParams) error {
+	_, err := q.db.Exec(ctx, removeCartItem, arg.CustomerID, arg.VariantID)
 	return err
 }
 

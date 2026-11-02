@@ -403,9 +403,20 @@ func (app *Application) ProductsFilter(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func (app *Application) getCartItems(r *http.Request, userID int32) ([]db.GetCartItemsRow, error) {
+	return app.queries.GetCartItems(r.Context(), userID)
+}
+
 func (app *Application) Profile(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r)
-	views.ProfileRenderer(user, "profile").Render(r.Context(), w)
+
+	cartItems, err := app.getCartItems(r, user.ID)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	views.ProfileRenderer(user, "profile", cartItems).Render(r.Context(), w)
 }
 
 func (app *Application) About(w http.ResponseWriter, r *http.Request) {
@@ -415,22 +426,89 @@ func (app *Application) About(w http.ResponseWriter, r *http.Request) {
 
 func (app *Application) Orders(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r)
-	views.ProfileRenderer(user, "orders").Render(r.Context(), w)
+
+	cartItems, err := app.getCartItems(r, user.ID)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	views.ProfileRenderer(user, "orders", cartItems).Render(r.Context(), w)
 }
 
 func (app *Application) Cart(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r)
-	views.ProfileRenderer(user, "cart").Render(r.Context(), w)
+
+	cartItems, err := app.getCartItems(r, user.ID)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	err = views.ProfileRenderer(user, "cart", cartItems).Render(r.Context(), w)
+	if err != nil {
+		app.serverError(w, r, err)
+	}
+}
+
+func (app *Application) RemoveFromCart(w http.ResponseWriter, r *http.Request) {
+	user := app.contextGetUser(r)
+
+	var form cartForm
+	if err := app.decodePostForm(r, &form); err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	variantID, variantErr := strconv.ParseInt(strings.TrimSpace(form.VariantID), 10, 32)
+	if variantErr != nil || variantID <= 0 {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	err := app.queries.RemoveCartItem(r.Context(), db.RemoveCartItemParams{
+		CustomerID: user.ID,
+		VariantID:  int32(variantID),
+	})
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	cartItems, err := app.getCartItems(r, user.ID)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r)
+	sse.PatchSignals([]byte(views.CartSignals(cartItems)))
+	sse.PatchElementTempl(views.CartItems(cartItems),
+		datastar.WithSelectorID("cart-items"), datastar.WithModeOuter())
 }
 
 func (app *Application) Reviews(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r)
-	views.ProfileRenderer(user, "review").Render(r.Context(), w)
+
+	cartItems, err := app.getCartItems(r, user.ID)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	views.ProfileRenderer(user, "reviews", cartItems).Render(r.Context(), w)
 }
 
 func (app *Application) Messages(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r)
-	views.ProfileRenderer(user, "messages").Render(r.Context(), w)
+
+	cartItems, err := app.getCartItems(r, user.ID)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	views.ProfileRenderer(user, "messages", cartItems).Render(r.Context(), w)
 }
 
 func (app *Application) Login(w http.ResponseWriter, r *http.Request) {
@@ -844,8 +922,14 @@ func (app *Application) updateProfile(w http.ResponseWriter, r *http.Request) {
 		UpdatedAt: updated.UpdatedAt,
 	}
 
+	cartItems, err := app.getCartItems(r, freshUser.ID)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
 	sse := datastar.NewSSE(w, r)
-	sse.PatchElementTempl(views.ProfileRenderer(freshUser, "profile"))
+	sse.PatchElementTempl(views.ProfileRenderer(freshUser, "profile", cartItems))
 	sse.PatchSignals([]byte(`{"updating": false}`))
 }
 

@@ -1,6 +1,10 @@
 package views
 
 import (
+	"encoding/json"
+	"strconv"
+	"strings"
+
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/sudip-kandel7/eveCollection/internal/db"
 )
@@ -12,7 +16,7 @@ func formatDate(t pgtype.Timestamp) string {
 	return t.Time.Format("January 2, 2006")
 }
 
-templ profile(user *db.User, tab string) {
+templ profile(user *db.User, tab string, cartItems []db.GetCartItemsRow) {
 	<div class="mx-auto flex w-full flex-1 flex-col lg:flex-row" data-signals:activetab={ "'" + tab + "'" }>
 
 		<aside class="w-full shrink-0 border-b border-gray-200 bg-white lg:w-64 lg:border-b-0 lg:border-r">
@@ -36,7 +40,7 @@ templ profile(user *db.User, tab string) {
 
 		<div class="flex-1">
 			@profileContent(user)
-			@cartContent()
+			@CartContent(cartItems)
 			@ordersContent()
 			@messagesContent()
 			@reviewsContent()
@@ -189,11 +193,252 @@ templ profileContent(user *db.User) {
 	</section>
 }
 
-templ cartContent() {
-	<section data-show="$activetab === 'cart'" class="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8">
-		<h1 class="text-2xl font-semibold tracking-tight text-[#20231F]">My cart</h1>
-		<p class="mt-2 text-sm text-[#63685F]">Products added to cart will show up here.</p>
+type cartSignalItem struct {
+	ID       int32   `json:"id"`
+	Selected bool    `json:"selected"`
+	Quantity int32   `json:"quantity"`
+	Price    float64 `json:"price"`
+	Stock    int32   `json:"stock"`
+}
+
+func CartSignals(items []db.GetCartItemsRow) string {
+	cart := make([]cartSignalItem, 0, len(items))
+	for _, item := range items {
+		cart = append(cart, cartSignalItem{
+			ID:       item.ID,
+			Selected: true,
+			Quantity: item.Quantity,
+			Price:    item.Price,
+			Stock:    item.Stock,
+		})
+	}
+	data, err := json.Marshal(map[string]any{"cart": cart})
+	if err != nil {
+		return `{"cart":[]}`
+	}
+	return string(data)
+}
+
+func cartPriceLabel(price float64) string {
+	s := strconv.FormatFloat(price, 'f', -1, 64)
+	whole, frac, hasFrac := strings.Cut(s, ".")
+	for i := len(whole) - 3; i > 0; i -= 3 {
+		whole = whole[:i] + "," + whole[i:]
+	}
+	if hasFrac {
+		return "Rs. " + whole + "." + frac
+	}
+	return "Rs. " + whole
+}
+
+func cartQtyExpr(i int) string {
+	return "$cart[" + strconv.Itoa(i) + "].quantity"
+}
+
+func cartSelectedExpr(i int) string {
+	return "$cart[" + strconv.Itoa(i) + "].selected"
+}
+
+func cartStockExpr(i int) string {
+	return "$cart[" + strconv.Itoa(i) + "].stock"
+}
+
+func cartLineTotalExpr(i int) string {
+	return "'Rs. ' + (" + cartQtyExpr(i) + " * $cart[" + strconv.Itoa(i) + "].price).toLocaleString('en-IN')"
+}
+
+func cartDecreaseExpr(i int) string {
+	q := cartQtyExpr(i)
+	return q + " = Math.max(1, " + q + " - 1)"
+}
+
+func cartIncreaseExpr(i int) string {
+	q := cartQtyExpr(i)
+	return q + " = Math.min(" + cartStockExpr(i) + ", " + q + " + 1)"
+}
+
+func cartSubtotalExpr() string {
+	return "($cart.reduce((sum, item) => sum + (item.selected ? item.quantity * item.price : 0), 0))"
+}
+
+func cartSubtotalTextExpr() string {
+	return "'Rs. ' + " + cartSubtotalExpr() + ".toLocaleString('en-IN')"
+}
+
+func cartInitialSubtotal(items []db.GetCartItemsRow) float64 {
+	total := 0.0
+	for _, item := range items {
+		total += item.Price * float64(item.Quantity)
+	}
+	return total
+}
+
+templ CartContent(items []db.GetCartItemsRow) {
+	<section
+		data-show="$activetab === 'cart'"
+		class="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8"
+		data-signals={ CartSignals(items) }
+	>
+		<div>
+			<h1 class="text-2xl font-semibold tracking-tight text-[#20231F]">My cart</h1>
+			<p class="mt-2 text-sm text-[#63685F]">Review your items and choose what to checkout.</p>
+		</div>
+
+		<div class="mt-8 grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+			@CartItems(items)
+
+			<aside
+				data-show="$cart.length > 0"
+				class="rounded-2xl border border-[#E5E8DF] bg-white p-5 sm:p-6 lg:sticky lg:top-6"
+			>
+				<h2 class="text-lg font-semibold text-[#20231F]">Order summary</h2>
+
+				<div class="mt-5 space-y-3 text-sm">
+					<div class="flex items-center justify-between gap-4">
+						<span class="text-[#63685F]">Subtotal</span>
+						<span
+							class="font-semibold text-[#20231F]"
+							data-text={ cartSubtotalTextExpr() }
+						>{ cartPriceLabel(cartInitialSubtotal(items)) }</span>
+					</div>
+					<div class="flex items-center justify-between gap-4">
+						<span class="text-[#63685F]">Delivery</span>
+						<span class="text-right text-[#63685F]">Calculated at checkout</span>
+					</div>
+				</div>
+
+				<div class="my-5 h-px w-full bg-[#E5E8DF]"></div>
+
+				<div class="flex items-center justify-between gap-4">
+					<span class="flex items-center gap-2 text-base font-semibold text-[#20231F]">
+						Total
+						<span class="text-sm font-medium text-[#4A5443]">(For Now)</span>
+					</span>
+					<span
+						class="text-lg font-bold text-[#283B28]"
+						data-text={ cartSubtotalTextExpr() }
+					>{ cartPriceLabel(cartInitialSubtotal(items)) }</span>
+				</div>
+
+				<button
+					type="button"
+					data-attr:disabled={ cartSubtotalExpr() + " === 0" }
+					class="mt-6 w-full rounded-xl bg-[#283B28] px-5 py-3 text-sm font-semibold text-[#F7F8F5] transition hover:bg-[#20261F] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#283B28]"
+				>
+					Checkout
+				</button>
+			</aside>
+		</div>
 	</section>
+}
+
+templ CartItems(items []db.GetCartItemsRow) {
+	<div id="cart-items" class="space-y-4">
+		if len(items) == 0 {
+			<div class="rounded-2xl border border-dashed border-[#DCE2D7] bg-white px-6 py-14 text-center">
+				<p class="text-base font-semibold text-[#20231F]">Your cart is empty</p>
+				<p class="mt-1 text-sm text-[#63685F]">Add a few favourites and they will show up here.</p>
+				<a
+					href="/#collection"
+					class="mt-5 inline-flex items-center justify-center rounded-full bg-[#283B28] px-5 py-2.5 text-sm font-semibold text-[#F7F8F5] transition hover:bg-[#20261F]"
+				>
+					Explore collection
+				</a>
+			</div>
+		} else {
+			for i, item := range items {
+				@cartItem(i, item)
+			}
+		}
+	</div>
+}
+
+templ cartItem(i int, item db.GetCartItemsRow) {
+	<article class="rounded-2xl border border-[#E5E8DF] bg-white p-3 sm:p-4">
+		<div class="flex gap-3 sm:gap-4">
+			<input
+				type="checkbox"
+				data-attr:checked={ cartSelectedExpr(i) }
+				data-on:change={ cartSelectedExpr(i) + " = evt.target.checked" }
+				aria-label={ "Select " + item.ProductName }
+				class="mt-1 h-4 w-4 shrink-0 cursor-pointer rounded border-[#CFD6C8] accent-[#283B28]"
+			/>
+
+			<img
+				src={ item.Image }
+				alt={ item.ProductName }
+				class="h-24 w-20 shrink-0 rounded-xl object-cover sm:h-28 sm:w-24"
+			/>
+
+			<div class="min-w-0 flex-1">
+				<h2 class="truncate text-sm font-semibold text-[#20231F] sm:text-base">{ item.ProductName }</h2>
+				<p class="mt-1 text-xs text-[#63685F] sm:text-sm">{  item.Color + " / " + item.Size }</p>
+				<p
+					class="mt-2 text-sm font-semibold text-[#283B28]"
+					data-text={ cartLineTotalExpr(i) }
+				>{ cartPriceLabel(item.Price * float64(item.Quantity)) }</p>
+
+				<div class="mt-3 flex items-center justify-between gap-3">
+					<div class="inline-flex h-9 items-center rounded-lg border border-[#DCE2D7] bg-white">
+						<button
+							type="button"
+							data-on:click={ cartDecreaseExpr(i) }
+							data-attr:disabled={ cartQtyExpr(i) + " <= 1" }
+							class="flex h-full w-9 items-center justify-center text-base font-semibold text-[#4A5443] transition hover:bg-[#F3F5F0] disabled:cursor-not-allowed disabled:text-[#B0B7AA] disabled:hover:bg-transparent"
+							aria-label="Decrease quantity"
+						>
+							−
+						</button>
+						<span
+							class="flex h-full w-10 items-center justify-center border-x border-[#E5E8DF] text-sm font-semibold text-[#20231F]"
+							data-text={ cartQtyExpr(i) }
+						>{ strconv.Itoa(int(item.Quantity)) }</span>
+						<button
+							type="button"
+							data-on:click={ cartIncreaseExpr(i) }
+							data-attr:disabled={ cartQtyExpr(i) + " >= " + cartStockExpr(i) }
+							class="flex h-full w-9 items-center justify-center text-base font-semibold text-[#4A5443] transition hover:bg-[#F3F5F0] disabled:cursor-not-allowed disabled:text-[#B0B7AA] disabled:hover:bg-transparent"
+							aria-label="Increase quantity"
+						>
+							+
+						</button>
+					</div>
+
+					<form
+						data-on:submit__prevent="@post('/remove/cart', {contentType: 'form'})"
+					>
+						<input
+							type="hidden"
+							name="variant_id"
+							value={ strconv.Itoa(int(item.VariantID)) }
+						/>
+						<button
+							type="submit"
+							aria-label={ "Remove " + item.ProductName }
+							title="Remove item"
+							class="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E5E8DF] text-[#8A9285] transition hover:border-[#B45A45] hover:bg-[#FDF5F3] hover:text-[#B45A45]"
+						>
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="h-4 w-4"
+							aria-hidden="true"
+						>
+							<path d="M3 6h18"></path>
+							<path d="M8 6V4h8v2"></path>
+							<path d="M19 6l-1 14H6L5 6"></path>
+							<path d="M10 11v5M14 11v5"></path>
+						</svg>
+						</button>
+					</form>
+				</div>
+			</div>
+		</div>
+	</article>
 }
 
 templ ordersContent() {
@@ -217,8 +462,8 @@ templ reviewsContent() {
 	</section>
 }
 
-templ ProfileRenderer(user *db.User, tab string) {
+templ ProfileRenderer(user *db.User, tab string, cartItems []db.GetCartItemsRow) {
 	@Html("Profile", user, "profile"){
-		@profile(user, tab)
+		@profile(user, tab, cartItems)
 	}
 }

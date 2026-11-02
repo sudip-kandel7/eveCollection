@@ -893,6 +893,9 @@
   .h-20 {
     height: calc(var(--spacing) * 20);
   }
+  .h-24 {
+    height: calc(var(--spacing) * 24);
+  }
   .h-52 {
     height: calc(var(--spacing) * 52);
   }
@@ -1402,6 +1405,9 @@
   }
   .border-\[\#283B28\] {
     border-color: #283B28;
+  }
+  .border-\[\#CFD6C8\] {
+    border-color: #CFD6C8;
   }
   .border-\[\#D5DECC\] {
     border-color: #D5DECC;
@@ -2123,6 +2129,9 @@
   .underline-offset-4 {
     text-underline-offset: 4px;
   }
+  .accent-\[\#283B28\] {
+    accent-color: #283B28;
+  }
   .opacity-0 {
     opacity: 0%;
   }
@@ -2339,6 +2348,9 @@
     .hover\:border-\[\#638154\]:hover {
       border-color: #638154;
     }
+    .hover\:border-\[\#B45A45\]:hover {
+      border-color: #B45A45;
+    }
     .hover\:bg-\[\#3C523C\]:hover {
       background-color: #3C523C;
     }
@@ -2362,6 +2374,9 @@
     }
     .hover\:bg-\[\#F7F8F5\]:hover {
       background-color: #F7F8F5;
+    }
+    .hover\:bg-\[\#FDF5F3\]:hover {
+      background-color: #FDF5F3;
     }
     .hover\:bg-\[\#b8c6ac\]:hover {
       background-color: #b8c6ac;
@@ -2407,6 +2422,9 @@
     }
     .hover\:text-\[\#638154\]:hover {
       color: #638154;
+    }
+    .hover\:text-\[\#B45A45\]:hover {
+      color: #B45A45;
     }
     .hover\:text-black:hover {
       color: var(--color-black);
@@ -2464,6 +2482,9 @@
   .disabled\:line-through:disabled {
     text-decoration-line: line-through;
   }
+  .disabled\:opacity-40:disabled {
+    opacity: 40%;
+  }
   .disabled\:opacity-50:disabled {
     opacity: 50%;
   }
@@ -2500,8 +2521,14 @@
     .sm\:mx-0 {
       margin-inline: 0px;
     }
+    .sm\:h-28 {
+      height: calc(var(--spacing) * 28);
+    }
     .sm\:w-20 {
       width: calc(var(--spacing) * 20);
+    }
+    .sm\:w-24 {
+      width: calc(var(--spacing) * 24);
     }
     .sm\:w-\[calc\(50\%-0\.625rem\)\] {
       width: calc(50% - 0.625rem);
@@ -2548,6 +2575,9 @@
     }
     .sm\:gap-5 {
       gap: calc(var(--spacing) * 5);
+    }
+    .sm\:p-4 {
+      padding: calc(var(--spacing) * 4);
     }
     .sm\:p-6 {
       padding: calc(var(--spacing) * 6);
@@ -2611,9 +2641,17 @@
       font-size: var(--text-6xl);
       line-height: var(--tw-leading, var(--text-6xl--line-height));
     }
+    .sm\:text-base {
+      font-size: var(--text-base);
+      line-height: var(--tw-leading, var(--text-base--line-height));
+    }
     .sm\:text-lg {
       font-size: var(--text-lg);
       line-height: var(--tw-leading, var(--text-lg--line-height));
+    }
+    .sm\:text-sm {
+      font-size: var(--text-sm);
+      line-height: var(--tw-leading, var(--text-sm--line-height));
     }
   }
   @media (width >= 48rem) {
@@ -2655,8 +2693,14 @@
     .lg\:relative {
       position: relative;
     }
+    .lg\:sticky {
+      position: sticky;
+    }
     .lg\:inset-x-0 {
       inset-inline: 0px;
+    }
+    .lg\:top-6 {
+      top: calc(var(--spacing) * 6);
     }
     .lg\:top-14 {
       top: calc(var(--spacing) * 14);
@@ -2699,6 +2743,9 @@
     }
     .lg\:grid-cols-\[280px_1fr\] {
       grid-template-columns: 280px 1fr;
+    }
+    .lg\:grid-cols-\[minmax\(0\,1fr\)_340px\] {
+      grid-template-columns: minmax(0,1fr) 340px;
     }
     .lg\:flex-row {
       flex-direction: row;

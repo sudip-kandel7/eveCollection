@@ -325,3 +325,34 @@ RETURNING
     quantity,
     COALESCE((SELECT stock FROM product_variants WHERE id = cart_items.variant_id), 0)::int AS stock,
     COALESCE((SELECT product_id FROM product_variants WHERE id = cart_items.variant_id), 0)::int AS product_id;
+
+
+
+-- name: GetCartItems :many
+SELECT
+    ci.id,
+    ci.variant_id,
+    ci.quantity,
+    ci.added_at,
+    p.name AS product_name,
+    COALESCE(pv.size, '')  AS size,
+    COALESCE(pv.color, '') AS color,
+    pv.stock,
+    COALESCE(pv.price_override, p.base_price)::float8 AS price,
+    COALESCE(pi.image_url, '') AS image
+FROM cart_items ci
+JOIN product_variants pv ON pv.id = ci.variant_id
+JOIN products p          ON p.id = pv.product_id
+LEFT JOIN LATERAL (
+    SELECT image_url FROM product_images
+    WHERE product_id = p.id
+    ORDER BY sort_order ASC, id ASC
+    LIMIT 1
+) pi ON true
+WHERE ci.customer_id = $1
+ORDER BY ci.added_at DESC;
+
+
+-- name: RemoveCartItem :exec
+DELETE FROM cart_items
+WHERE customer_id = $1 AND variant_id = $2;
