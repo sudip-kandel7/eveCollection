@@ -98,6 +98,7 @@ const (
 	maxMoney         = 50000.0
 	maxVariants      = 50
 	maxReviewText    = 1000
+	relatedLimit     = 4
 )
 
 type reviewForm struct {
@@ -190,7 +191,53 @@ func (app *Application) ProductDetails(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	productsCard, err := app.queries.ListProductsCard(r.Context(), db.ListProductsCardParams{
+	categoryProductIDs, err := app.queries.GetCategoryProductIDs(r.Context(), int32(id))
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	productTagIDs, err := app.queries.GetProductTagIDs(r.Context(), int32(id))
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	tagProductIDs, err := app.queries.GetProductIDsByTagIDs(r.Context(), productTagIDs)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	seen := make(map[int32]bool, len(categoryProductIDs)+len(tagProductIDs))
+	productIDs := make([]int32, 0, len(categoryProductIDs)+len(tagProductIDs))
+
+	for _, pid := range categoryProductIDs {
+		if pid == int32(id) || seen[pid] {
+			continue
+		}
+		seen[pid] = true
+		productIDs = append(productIDs, pid)
+	}
+	for _, pid := range tagProductIDs {
+		if pid == int32(id) || seen[pid] {
+			continue
+		}
+		seen[pid] = true
+		productIDs = append(productIDs, pid)
+	}
+
+	recommendationFeatures, err := app.queries.GetRecommendationFeatures(r.Context(), productIDs)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	user := app.contextGetUser(r)
+
+	recommendations := algorithms.RecommendationPoints(recommendationFeatures, productTagIDs, productDetails.CategoryID, relatedLimit)
+
+	allCards, err := app.queries.ListProductsCard(r.Context(), db.ListProductsCardParams{
 		Category: 0,
 		Terms:    []string{},
 		Sort:     "Featured",
@@ -200,7 +247,23 @@ func (app *Application) ProductDetails(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := app.contextGetUser(r)
+	cardByID := make(map[int32]db.ListProductsCardRow, len(allCards))
+	for _, card := range allCards {
+		cardByID[card.ID] = card
+	}
+
+	recommendedCards := make([]db.ListProductsCardRow, 0, len(recommendations))
+	for _, recommendation := range recommendations {
+		if card, ok := cardByID[recommendation.ProductID]; ok {
+			recommendedCards = append(recommendedCards, card)
+		}
+	}
+	if len(recommendedCards) == 0 {
+		recommendedCards = allCards
+		if len(recommendedCards) > relatedLimit {
+			recommendedCards = recommendedCards[:relatedLimit]
+		}
+	}
 
 	canReview := false
 	if user != nil {
@@ -214,7 +277,7 @@ func (app *Application) ProductDetails(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	component := views.ProductDetailRenderer(user, productDetails, images, productReviews, variants, productsCard, canReview)
+	component := views.ProductDetailRenderer(user, productDetails, images, productReviews, variants, recommendedCards, canReview)
 
 	err = component.Render(r.Context(), w)
 	if err != nil {
@@ -664,7 +727,15 @@ func (app *Application) Signup(w http.ResponseWriter, r *http.Request) {
 	savedID := app.sessionManager.GetInt(r.Context(), "authenticatedUserID")
 	app.logger.Info("session user ID", "userID", savedID)
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	if err := app.commitSession(w, r); err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r)
+	if err := sse.Redirect("/"); err != nil {
+		app.serverError(w, r, err)
+	}
 
 }
 
@@ -746,7 +817,15 @@ func (app *Application) Signin(w http.ResponseWriter, r *http.Request) {
 	savedID := app.sessionManager.GetInt(r.Context(), "authenticatedUserID")
 	app.logger.Info("session user ID", "userID", savedID)
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	if err := app.commitSession(w, r); err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r)
+	if err := sse.Redirect("/"); err != nil {
+		app.serverError(w, r, err)
+	}
 }
 
 func (app *Application) AdminSignin(w http.ResponseWriter, r *http.Request) {
@@ -1051,6 +1130,7 @@ func (app *Application) Categories(w http.ResponseWriter, r *http.Request) {
 	sse := datastar.NewSSE(w, r)
 	sse.PatchElementTempl(components.CategoryErrors(map[string]string{}))
 	sse.PatchElementTempl(views.CategoryAdminContent(categories), datastar.WithSelectorID("category-admin"))
+	sse.PatchElementTempl(views.ProductCategorySelect(categories), datastar.WithSelectorID("product-category-select"), datastar.WithModeOuter())
 	sse.PatchSignals([]byte(`{"submitting": false, "catname": "", "catimage": "", "catpreview": ""}`))
 }
 
@@ -1272,6 +1352,7 @@ func (app *Application) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 	sse := datastar.NewSSE(w, r)
 	sse.PatchElementTempl(components.CategoryErrors(map[string]string{}))
 	sse.PatchElementTempl(views.CategoryAdminContent(categories), datastar.WithSelectorID("category-admin"))
+	sse.PatchElementTempl(views.ProductCategorySelect(categories), datastar.WithSelectorID("product-category-select"), datastar.WithModeOuter())
 	sse.PatchSignals([]byte(`{"submitting": false, "formmode": "create", "categoryid": "0", "catname": "", "catimage": "", "catpreview": "", "catactive": true}`))
 }
 
@@ -1319,6 +1400,7 @@ func (app *Application) DeleteCategory(w http.ResponseWriter, r *http.Request) {
 
 	sse := datastar.NewSSE(w, r)
 	sse.PatchElementTempl(views.CategoryAdminContent(categories), datastar.WithSelectorID("category-admin"))
+	sse.PatchElementTempl(views.ProductCategorySelect(categories), datastar.WithSelectorID("product-category-select"), datastar.WithModeOuter())
 	sse.PatchSignals([]byte(`{"formmode":"create","categoryid":"0","catname":"","catimage":"","catpreview":"","catactive":true,"submitting":false}`))
 }
 

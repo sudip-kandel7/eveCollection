@@ -164,6 +164,18 @@ templ CategoryAdminContent(categories []db.ListCategoriesWithPCRow) {
 	</section>
 }
 
+templ ProductCategorySelect(categories []db.ListCategoriesWithPCRow) {
+	<select id="product-category-select" name="category_id" data-bind:pcategory
+		data-on:change={ "if (evt.target.value === 'new') { $activetab = 'category'; $pcategory = ''; $formmode = 'create'; $categoryid = '0'; $catname = ''; $catactive = true; $catimage = ''; $catpreview = '' }" }
+		class="w-full rounded-xl border border-[#DFE5DA] bg-white px-3.5 py-2 text-sm text-[#20231F] outline-none focus:border-[#283B28]">
+		<option value="" disabled selected>Choose a category</option>
+		for _, c := range categories {
+			<option value={ strconv.FormatInt(int64(c.ID), 10) }>{ c.Name }</option>
+		}
+		<option value="new">Add New</option>
+	</select>
+}
+
 templ ProductsAdminContent(categories []db.ListCategoriesWithPCRow, products []db.ListProductsRow) {
 	<section
 		id="products-admin"
@@ -206,13 +218,7 @@ templ ProductsAdminContent(categories []db.ListCategoriesWithPCRow, products []d
 						</div>
 						<div>
 							<label class="mb-1.5 block text-sm font-medium text-[#20231F]">Category <span class="text-xs text-[#8A9285]">*</span></label>
-							<select name="category_id" data-bind:pcategory
-								class="w-full rounded-xl border border-[#DFE5DA] bg-white px-3.5 py-2 text-sm text-[#20231F] outline-none focus:border-[#283B28]">
-								<option value="" disabled selected>Choose a category</option>
-								for _, c := range categories {
-									<option value={ strconv.FormatInt(int64(c.ID), 10) }>{ c.Name }</option>
-								}
-							</select>
+							@ProductCategorySelect(categories)
 							<div id="err-pcategory" class="mt-1 text-xs text-red-600"></div>
 						</div>
 					</div>

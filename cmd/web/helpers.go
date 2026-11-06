@@ -38,13 +38,22 @@ func (app *Application) clientError(w http.ResponseWriter, status int) {
 	http.Error(w, http.StatusText(status), status)
 }
 
+func (app *Application) commitSession(w http.ResponseWriter, r *http.Request) error {
+	token, expiry, err := app.sessionManager.Commit(r.Context())
+	if err != nil {
+		return err
+	}
+
+	app.sessionManager.WriteSessionCookie(r.Context(), w, token, expiry)
+	return nil
+}
 
 func (app *Application) contextGetUser(r *http.Request) *db.User {
-    user, ok := r.Context().Value(userContextKey).(*db.User)
+	user, ok := r.Context().Value(userContextKey).(*db.User)
 
-    if !ok {
-        return nil
-    }
+	if !ok {
+		return nil
+	}
 
-    return user
+	return user
 }

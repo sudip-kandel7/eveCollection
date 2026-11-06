@@ -290,12 +290,12 @@ templ ProductGrid(productsCard []db.ListProductsCardRow) {
 			@productCard(product)
 		}
 		if len(productsCard) == 0 {
-			<div class="col-span-full rounded-xl border border-dashed border-[#DFE5DA] p-10 text-center text-sm text-[#63685F]">
+			<div class="col-span-full rounded-xl border border-dashed border-[#DFE5DA] bg-white p-10 text-center text-lg text-[#63685F]">
 				<p>No products match your search.</p>
 				<a
 					href="#hero-search"
 					onclick="event.preventDefault(); const el = document.getElementById('hero-search'); if (el) { el.focus({ preventScroll: true }); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.setSelectionRange(el.value.length, el.value.length); }"
-					class="mt-2 inline-block font-medium text-[#283B28] underline underline-offset-4 transition hover:text-[#638154]"
+					class="mt-2 inline-block font-medium text-[#6B7D60] underline underline-offset-4 transition hover:text-[#283B28]"
 				>
 					Try a different word
 				</a>

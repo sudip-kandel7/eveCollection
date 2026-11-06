@@ -444,6 +444,39 @@ func (q *Queries) GetCategory(ctx context.Context, id int32) (Category, error) {
 	return i, err
 }
 
+const getCategoryProductIDs = `-- name: GetCategoryProductIDs :many
+SELECT p.id
+FROM products p
+WHERE p.category_id = (
+    SELECT p2.category_id
+    FROM products p2
+    WHERE p2.id = $1
+)
+  AND p.id <> $1
+  AND p.is_active = TRUE
+ORDER BY p.id
+`
+
+func (q *Queries) GetCategoryProductIDs(ctx context.Context, id int32) ([]int32, error) {
+	rows, err := q.db.Query(ctx, getCategoryProductIDs, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int32
+	for rows.Next() {
+		var id int32
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getProduct = `-- name: GetProduct :one
 SELECT id, name, description, category_id, base_price::float8, is_active
 FROM products
@@ -476,6 +509,7 @@ func (q *Queries) GetProduct(ctx context.Context, id int32) (GetProductRow, erro
 const getProductDetail = `-- name: GetProductDetail :one
 SELECT
     p.id,
+    p.category_id,
     p.name,
     COALESCE(p.description, '')::text AS description,
     p.base_price::float8 AS price,
@@ -504,6 +538,7 @@ WHERE p.id = $1
 
 type GetProductDetailRow struct {
 	ID           int32
+	CategoryID   int32
 	Name         string
 	Description  string
 	Price        float64
@@ -518,6 +553,7 @@ func (q *Queries) GetProductDetail(ctx context.Context, id int32) (GetProductDet
 	var i GetProductDetailRow
 	err := row.Scan(
 		&i.ID,
+		&i.CategoryID,
 		&i.Name,
 		&i.Description,
 		&i.Price,
@@ -527,6 +563,131 @@ func (q *Queries) GetProductDetail(ctx context.Context, id int32) (GetProductDet
 		&i.Stock,
 	)
 	return i, err
+}
+
+const getProductIDsByTagIDs = `-- name: GetProductIDsByTagIDs :many
+SELECT DISTINCT product_id FROM product_tags WHERE tag_id = ANY($1::int[])
+`
+
+func (q *Queries) GetProductIDsByTagIDs(ctx context.Context, tagsIds []int32) ([]int32, error) {
+	rows, err := q.db.Query(ctx, getProductIDsByTagIDs, tagsIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int32
+	for rows.Next() {
+		var product_id int32
+		if err := rows.Scan(&product_id); err != nil {
+			return nil, err
+		}
+		items = append(items, product_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getProductTagIDs = `-- name: GetProductTagIDs :one
+SELECT ARRAY(
+    SELECT pt.tag_id
+    FROM product_tags pt
+    WHERE pt.product_id = $1
+    ORDER BY pt.tag_id
+)::int[] AS tag_ids
+`
+
+func (q *Queries) GetProductTagIDs(ctx context.Context, productID int32) ([]int32, error) {
+	row := q.db.QueryRow(ctx, getProductTagIDs, productID)
+	var tag_ids []int32
+	err := row.Scan(&tag_ids)
+	return tag_ids, err
+}
+
+const getRecommendationFeatures = `-- name: GetRecommendationFeatures :many
+SELECT
+    p.id,
+    p.category_id,
+    ARRAY(
+        SELECT pt.tag_id
+        FROM product_tags pt
+        WHERE pt.product_id = p.id
+        ORDER BY pt.tag_id
+    )::int[] AS tag_ids,
+    COALESCE(
+        (
+            SELECT AVG(pr.rating)
+            FROM product_reviews pr
+            WHERE pr.product_id = p.id
+        ),
+        0
+    )::float8 AS rating,
+    (
+        SELECT COUNT(*)
+        FROM product_reviews pr
+        WHERE pr.product_id = p.id
+    )::int AS review_count,
+    COALESCE(
+        (
+            SELECT SUM(oi.quantity)
+            FROM order_items oi
+            JOIN product_variants pv ON pv.id = oi.variant_id
+            JOIN orders o ON o.id = oi.order_id
+            WHERE pv.product_id = p.id
+              AND o.status = 'delivered'
+        ),
+        0
+    )::int AS sold,
+    COALESCE(
+        (
+            SELECT SUM(pv.stock)
+            FROM product_variants pv
+            WHERE pv.product_id = p.id
+        ),
+        0
+    )::int AS stock
+FROM products p
+WHERE p.id = ANY($1::int[])
+ORDER BY p.id
+`
+
+type GetRecommendationFeaturesRow struct {
+	ID          int32
+	CategoryID  int32
+	TagIds      []int32
+	Rating      float64
+	ReviewCount int32
+	Sold        int32
+	Stock       int32
+}
+
+func (q *Queries) GetRecommendationFeatures(ctx context.Context, productIds []int32) ([]GetRecommendationFeaturesRow, error) {
+	rows, err := q.db.Query(ctx, getRecommendationFeatures, productIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRecommendationFeaturesRow
+	for rows.Next() {
+		var i GetRecommendationFeaturesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CategoryID,
+			&i.TagIds,
+			&i.Rating,
+			&i.ReviewCount,
+			&i.Sold,
+			&i.Stock,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getUser = `-- name: GetUser :one

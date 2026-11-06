@@ -175,6 +175,76 @@ FROM product_images
 WHERE product_id = $1
 ORDER BY sort_order;
 
+-- name: GetCategoryProductIDs :many
+SELECT p.id
+FROM products p
+WHERE p.category_id = (
+    SELECT p2.category_id
+    FROM products p2
+    WHERE p2.id = $1
+)
+  AND p.id <> $1
+  AND p.is_active = TRUE
+ORDER BY p.id;
+
+-- name: GetProductTagIDs :one
+SELECT ARRAY(
+    SELECT pt.tag_id
+    FROM product_tags pt
+    WHERE pt.product_id = $1
+    ORDER BY pt.tag_id
+)::int[] AS tag_ids;
+
+-- name: GetProductIDsByTagIDs :many
+SELECT DISTINCT product_id FROM product_tags WHERE tag_id = ANY(sqlc.arg('tags_ids')::int[]);
+
+-- name: GetRecommendationFeatures :many
+SELECT
+    p.id,
+    p.category_id,
+    ARRAY(
+        SELECT pt.tag_id
+        FROM product_tags pt
+        WHERE pt.product_id = p.id
+        ORDER BY pt.tag_id
+    )::int[] AS tag_ids,
+    COALESCE(
+        (
+            SELECT AVG(pr.rating)
+            FROM product_reviews pr
+            WHERE pr.product_id = p.id
+        ),
+        0
+    )::float8 AS rating,
+    (
+        SELECT COUNT(*)
+        FROM product_reviews pr
+        WHERE pr.product_id = p.id
+    )::int AS review_count,
+    COALESCE(
+        (
+            SELECT SUM(oi.quantity)
+            FROM order_items oi
+            JOIN product_variants pv ON pv.id = oi.variant_id
+            JOIN orders o ON o.id = oi.order_id
+            WHERE pv.product_id = p.id
+              AND o.status = 'delivered'
+        ),
+        0
+    )::int AS sold,
+    COALESCE(
+        (
+            SELECT SUM(pv.stock)
+            FROM product_variants pv
+            WHERE pv.product_id = p.id
+        ),
+        0
+    )::int AS stock
+FROM products p
+WHERE p.id = ANY(sqlc.arg('product_ids')::int[])
+ORDER BY p.id;
+
+
 -- name: ListProducts :many
 SELECT p.id, p.name, p.description, p.category_id, p.base_price::float8, p.is_active, p.created_at, c.name AS category_name,
     COALESCE((
@@ -255,6 +325,7 @@ SELECT product_id, day, views, carts, purchases FROM product_stats WHERE day >= 
 -- name: GetProductDetail :one
 SELECT
     p.id,
+    p.category_id,
     p.name,
     COALESCE(p.description, '')::text AS description,
     p.base_price::float8 AS price,

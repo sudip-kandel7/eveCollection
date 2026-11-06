@@ -551,7 +551,7 @@ func ProductGrid(productsCard []db.ListProductsCardRow) templ.Component {
 			}
 		}
 		if len(productsCard) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<div class=\"col-span-full rounded-xl border border-dashed border-[#DFE5DA] p-10 text-center text-sm text-[#63685F]\"><p>No products match your search.</p><a href=\"#hero-search\" onclick=\"event.preventDefault(); const el = document.getElementById('hero-search'); if (el) { el.focus({ preventScroll: true }); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.setSelectionRange(el.value.length, el.value.length); }\" class=\"mt-2 inline-block font-medium text-[#283B28] underline underline-offset-4 transition hover:text-[#638154]\">Try a different word</a></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<div class=\"col-span-full rounded-xl border border-dashed border-[#DFE5DA] bg-white p-10 text-center text-lg text-[#63685F]\"><p>No products match your search.</p><a href=\"#hero-search\" onclick=\"event.preventDefault(); const el = document.getElementById('hero-search'); if (el) { el.focus({ preventScroll: true }); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.setSelectionRange(el.value.length, el.value.length); }\" class=\"mt-2 inline-block font-medium text-[#6B7D60] underline underline-offset-4 transition hover:text-[#283B28]\">Try a different word</a></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

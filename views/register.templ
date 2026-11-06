@@ -27,7 +27,7 @@ templ register(form RegisterFormData) {
 
 				<div id="err-nonfield"></div>
 
-				<form class="mt-5 space-y-5" data-on:submit="@post('/register', {contentType: 'form'})">
+				<form class="mt-5 space-y-5" data-on:submit__prevent="@post('/register', {contentType: 'form'})">
 					<div>
 						<label for="name" class="mb-1.5 block text-sm font-medium text-[#20231F]">
 							Full name
