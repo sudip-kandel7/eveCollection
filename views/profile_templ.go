@@ -24,7 +24,7 @@ func formatDate(t pgtype.Timestamp) string {
 	return t.Time.Format("January 2, 2006")
 }
 
-func profile(user *db.User, tab string, cartItems []db.GetCartItemsRow) templ.Component {
+func profile(user *db.User, tab string, cartItems []db.GetCartItemsRow, orders []OrderView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -58,7 +58,7 @@ func profile(user *db.User, tab string, cartItems []db.GetCartItemsRow) templ.Co
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\"><aside class=\"w-full shrink-0 border-b border-gray-200 bg-white lg:w-64 lg:border-b-0 lg:border-r\"><div class=\"px-4 py-4 sm:px-6 sm:py-6 lg:px-6 lg:py-8\"><h2 class=\"text-lg font-semibold text-gray-900\">My Account</h2><p class=\"mt-1 text-sm text-gray-500\">Manage your account</p></div><nav class=\"flex flex-wrap gap-2 px-3 pb-2 lg:block lg:px-3 lg:pb-0\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" data-signals:orderModalOpen=\"false\"><aside class=\"w-full shrink-0 border-b border-gray-200 bg-white lg:w-64 lg:border-b-0 lg:border-r\"><div class=\"px-4 py-4 sm:px-6 sm:py-6 lg:px-6 lg:py-8\"><h2 class=\"text-lg font-semibold text-gray-900\">My Account</h2><p class=\"mt-1 text-sm text-gray-500\">Manage your account</p></div><nav class=\"flex flex-wrap gap-2 px-3 pb-2 lg:block lg:px-3 lg:pb-0\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -94,7 +94,7 @@ func profile(user *db.User, tab string, cartItems []db.GetCartItemsRow) templ.Co
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = ordersContent().Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = ordersContent(orders).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -106,7 +106,15 @@ func profile(user *db.User, tab string, cartItems []db.GetCartItemsRow) templ.Co
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = OrderModal().Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -135,46 +143,59 @@ func accountNavLink(tab, label string) templ.Component {
 			templ_7745c5c3_Var3 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<a href=\"#\" data-on:click__prevent=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<a href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var4 string
-		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue("$activetab = '" + tab + "'")
+		var templ_7745c5c3_Var4 templ.SafeURL
+		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs("/profile?tab=" + tab)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 54, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 54, Col: 32}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" data-attr:class=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" data-on:click__prevent=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue("$activetab === '" + tab + "' ? 'mt-0 block shrink-0 whitespace-nowrap rounded-lg bg-gray-100 px-4 py-3 text-sm font-medium text-gray-900' : 'mt-0 block shrink-0 whitespace-nowrap rounded-lg px-4 py-3 text-sm text-gray-600 transition hover:bg-gray-100 lg:mt-1'")
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue("$activetab = '" + tab + "'; history.replaceState({}, '', '/profile?tab=" + tab + "')")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 55, Col: 281}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 55, Col: 113}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" data-attr:class=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var6 string
-		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(label)
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue("$activetab === '" + tab + "' ? 'mt-0 block shrink-0 whitespace-nowrap rounded-lg bg-gray-100 px-4 py-3 text-sm font-medium text-gray-900' : 'mt-0 block shrink-0 whitespace-nowrap rounded-lg px-4 py-3 text-sm text-gray-600 transition hover:bg-gray-100 lg:mt-1'")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 57, Col: 9}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 56, Col: 281}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</a>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var7 string
+		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(label)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 58, Col: 9}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</a>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -198,82 +219,69 @@ func profileContent(user *db.User) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var7 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var7 == nil {
-			templ_7745c5c3_Var7 = templ.NopComponent
+		templ_7745c5c3_Var8 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var8 == nil {
+			templ_7745c5c3_Var8 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<section id=\"profile-content\" data-show=\"$activetab === 'profile'\" class=\"px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8\" data-signals:updating=\"false\"><div class=\"max-w-4xl\"><div class=\"flex flex-col items-start gap-4 sm:flex-row sm:justify-between\"><div><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">Profile</h1><p class=\"mt-2 text-sm text-[#63685F]\">Manage your personal information and account details.</p></div><button type=\"button\" data-show=\"!$updating\" data-on:click=\"$updating = true\" class=\"w-full rounded-full border border-[#DFE5DA] bg-white px-4 py-2.5 text-sm font-medium text-[#283B28] transition hover:bg-[#F0EFE9] sm:w-auto sm:py-2\">Edit profile</button></div><form id=\"profile-form\" class=\"mt-8 rounded-2xl border border-[#E5E8DF] bg-white p-5 sm:p-8\" data-on:submit=\"@post('/profile', {contentType: 'form'})\"><div class=\"grid grid-cols-1 gap-6 sm:grid-cols-2\"><div><label class=\"mb-1.5 block text-xs font-medium uppercase tracking-wide text-[#63685F]\">Full name</label> <input type=\"text\" name=\"name\" value=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var8 string
-		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(user.Name)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 106, Col: 24}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" data-attr:disabled=\"!$updating\" class=\"w-full rounded-xl border border-[#E5E8DF] bg-[#F7F8F5] px-4 py-2.5 text-sm text-[#20231F] outline-none disabled:cursor-not-allowed\"><div id=\"err-name\" class=\"mt-1 text-xs text-red-600\"></div></div><div><label class=\"mb-1.5 block text-xs font-medium uppercase tracking-wide text-[#63685F]\">Email</label> <input type=\"email\" name=\"email\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<section id=\"profile-content\" data-show=\"$activetab === 'profile'\" class=\"px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8\" data-signals:updating=\"false\"><div class=\"max-w-4xl\"><div class=\"flex flex-col items-start gap-4 sm:flex-row sm:justify-between\"><div><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">Profile</h1><p class=\"mt-2 text-sm text-[#63685F]\">Manage your personal information and account details.</p></div><button type=\"button\" data-show=\"!$updating\" data-on:click=\"$updating = true\" class=\"w-full rounded-full border border-[#DFE5DA] bg-white px-4 py-2.5 text-sm font-medium text-[#283B28] transition hover:bg-[#F0EFE9] sm:w-auto sm:py-2\">Edit profile</button></div><form id=\"profile-form\" class=\"mt-8 rounded-2xl border border-[#E5E8DF] bg-white p-5 sm:p-8\" data-on:submit=\"@post('/profile', {contentType: 'form'})\"><div class=\"grid grid-cols-1 gap-6 sm:grid-cols-2\"><div><label class=\"mb-1.5 block text-xs font-medium uppercase tracking-wide text-[#63685F]\">Full name</label> <input type=\"text\" name=\"name\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var9 string
-		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(user.Email)
+		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(user.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 122, Col: 25}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 107, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "\" data-attr:disabled=\"!$updating\" class=\"w-full rounded-xl border border-[#E5E8DF] bg-[#F7F8F5] px-4 py-2.5 text-sm text-[#20231F] outline-none disabled:cursor-not-allowed\"><div id=\"err-email\" class=\"mt-1 text-xs text-red-600\"></div></div><div><label class=\"mb-1.5 block text-xs font-medium uppercase tracking-wide text-[#63685F]\">Phone</label> <input type=\"tel\" name=\"phone\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" data-attr:disabled=\"!$updating\" class=\"w-full rounded-xl border border-[#E5E8DF] bg-[#F7F8F5] px-4 py-2.5 text-sm text-[#20231F] outline-none disabled:cursor-not-allowed\"><div id=\"err-name\" class=\"mt-1 text-xs text-red-600\"></div></div><div><label class=\"mb-1.5 block text-xs font-medium uppercase tracking-wide text-[#63685F]\">Email</label> <input type=\"email\" name=\"email\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var10 string
-		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(user.Phone)
+		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(user.Email)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 138, Col: 25}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 123, Col: 25}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" data-attr:disabled=\"!$updating\" class=\"w-full rounded-xl border border-[#E5E8DF] bg-[#F7F8F5] px-4 py-2.5 text-sm text-[#20231F] outline-none disabled:cursor-not-allowed\"><div id=\"err-phone\" class=\"mt-1 text-xs text-red-600\"></div></div><div><label class=\"mb-1.5 block text-xs font-medium uppercase tracking-wide text-[#63685F]\">Address</label> <input type=\"text\" name=\"address\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" data-attr:disabled=\"!$updating\" class=\"w-full rounded-xl border border-[#E5E8DF] bg-[#F7F8F5] px-4 py-2.5 text-sm text-[#20231F] outline-none disabled:cursor-not-allowed\"><div id=\"err-email\" class=\"mt-1 text-xs text-red-600\"></div></div><div><label class=\"mb-1.5 block text-xs font-medium uppercase tracking-wide text-[#63685F]\">Phone</label> <input type=\"tel\" name=\"phone\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var11 string
-		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(user.Address)
+		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(user.Phone)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 154, Col: 27}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 139, Col: 25}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" placeholder=\"No address added\" data-attr:disabled=\"!$updating\" class=\"w-full rounded-xl border border-[#E5E8DF] bg-[#F7F8F5] px-4 py-2.5 text-sm text-[#20231F] outline-none disabled:cursor-not-allowed\"><div id=\"err-address\" class=\"mt-1 text-xs text-red-600\"></div></div></div><div data-show=\"$updating\" class=\"mt-6 flex flex-wrap justify-end gap-3 border-t border-[#E5E8DF] pt-6\"><button type=\"button\" data-on:click=\"document.getElementById('profile-form').reset(); $updating = false\" class=\"rounded-full border border-[#DFE5DA] bg-white px-4 py-2.5 text-sm font-medium text-[#63685F] transition hover:bg-[#F0EFE9] sm:py-2\">Cancel</button> <button type=\"submit\" class=\"rounded-full bg-[#283B28] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#3C523C] sm:py-2\">Save</button></div></form><div class=\"mt-6 flex flex-wrap gap-x-6 gap-y-1 text-xs text-[#63685F]\"><p>Member since ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\" data-attr:disabled=\"!$updating\" class=\"w-full rounded-xl border border-[#E5E8DF] bg-[#F7F8F5] px-4 py-2.5 text-sm text-[#20231F] outline-none disabled:cursor-not-allowed\"><div id=\"err-phone\" class=\"mt-1 text-xs text-red-600\"></div></div><div><label class=\"mb-1.5 block text-xs font-medium uppercase tracking-wide text-[#63685F]\">Address</label> <input type=\"text\" name=\"address\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var12 string
-		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(formatDate(user.CreatedAt))
+		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(user.Address)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 188, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 155, Col: 27}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</p><p>Last updated ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\" placeholder=\"No address added\" data-attr:disabled=\"!$updating\" class=\"w-full rounded-xl border border-[#E5E8DF] bg-[#F7F8F5] px-4 py-2.5 text-sm text-[#20231F] outline-none disabled:cursor-not-allowed\"><div id=\"err-address\" class=\"mt-1 text-xs text-red-600\"></div></div></div><div data-show=\"$updating\" class=\"mt-6 flex flex-wrap justify-end gap-3 border-t border-[#E5E8DF] pt-6\"><button type=\"button\" data-on:click=\"document.getElementById('profile-form').reset(); $updating = false\" class=\"rounded-full border border-[#DFE5DA] bg-white px-4 py-2.5 text-sm font-medium text-[#63685F] transition hover:bg-[#F0EFE9] sm:py-2\">Cancel</button> <button type=\"submit\" class=\"rounded-full bg-[#283B28] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#3C523C] sm:py-2\">Save</button></div></form><div class=\"mt-6 flex flex-wrap gap-x-6 gap-y-1 text-xs text-[#63685F]\"><p>Member since ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var13 string
-		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(formatDate(user.UpdatedAt))
+		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(formatDate(user.CreatedAt))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 189, Col: 48}
 		}
@@ -281,7 +289,20 @@ func profileContent(user *db.User) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</p></div></div></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</p><p>Last updated ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var14 string
+		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(formatDate(user.UpdatedAt))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 190, Col: 48}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</p></div></div></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -290,22 +311,24 @@ func profileContent(user *db.User) templ.Component {
 }
 
 type cartSignalItem struct {
-	ID       int32   `json:"id"`
-	Selected bool    `json:"selected"`
-	Quantity int32   `json:"quantity"`
-	Price    float64 `json:"price"`
-	Stock    int32   `json:"stock"`
+	ID        int32   `json:"id"`
+	VariantID int32   `json:"variant_id"`
+	Selected  bool    `json:"selected"`
+	Quantity  int32   `json:"quantity"`
+	Price     float64 `json:"price"`
+	Stock     int32   `json:"stock"`
 }
 
 func CartSignals(items []db.GetCartItemsRow) string {
 	cart := make([]cartSignalItem, 0, len(items))
 	for _, item := range items {
 		cart = append(cart, cartSignalItem{
-			ID:       item.ID,
-			Selected: true,
-			Quantity: item.Quantity,
-			Price:    item.Price,
-			Stock:    item.Stock,
+			ID:        item.ID,
+			VariantID: item.VariantID,
+			Selected:  true,
+			Quantity:  item.Quantity,
+			Price:     item.Price,
+			Stock:     item.Stock,
 		})
 	}
 	data, err := json.Marshal(map[string]any{"cart": cart})
@@ -385,25 +408,25 @@ func CartContent(items []db.GetCartItemsRow) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var14 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var14 == nil {
-			templ_7745c5c3_Var14 = templ.NopComponent
+		templ_7745c5c3_Var15 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var15 == nil {
+			templ_7745c5c3_Var15 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<section data-show=\"$activetab === 'cart'\" class=\"px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8\" data-signals=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<section data-show=\"$activetab === 'cart'\" class=\"px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8\" data-signals=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var15 string
-		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue(CartSignals(items))
+		var templ_7745c5c3_Var16 string
+		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(CartSignals(items))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 280, Col: 35}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 283, Col: 35}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\"><div><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">My cart</h1><p class=\"mt-2 text-sm text-[#63685F]\">Review your items and choose what to checkout.</p></div><div class=\"mt-8 grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\"><div><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">My cart</h1><p class=\"mt-2 text-sm text-[#63685F]\">Review your items and choose what to checkout.</p></div><div class=\"mt-8 grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -411,42 +434,16 @@ func CartContent(items []db.GetCartItemsRow) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<aside data-show=\"$cart.length > 0\" class=\"rounded-2xl border border-[#E5E8DF] bg-white p-5 sm:p-6 lg:sticky lg:top-6\"><h2 class=\"text-lg font-semibold text-[#20231F]\">Order summary</h2><div class=\"mt-5 space-y-3 text-sm\"><div class=\"flex items-center justify-between gap-4\"><span class=\"text-[#63685F]\">Subtotal</span> <span class=\"font-semibold text-[#20231F]\" data-text=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var16 string
-		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(cartSubtotalTextExpr())
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 301, Col: 41}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<aside data-show=\"$cart.length > 0\" class=\"rounded-2xl border border-[#E5E8DF] bg-white p-5 sm:p-6 lg:sticky lg:top-6\"><h2 class=\"text-lg font-semibold text-[#20231F]\">Order summary</h2><div class=\"mt-5 space-y-3 text-sm\"><div class=\"flex items-center justify-between gap-4\"><span class=\"text-[#63685F]\">Subtotal</span> <span class=\"font-semibold text-[#20231F]\" data-text=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var17 string
-		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(cartPriceLabel(cartInitialSubtotal(items)))
+		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.ResolveAttributeValue(cartSubtotalTextExpr())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 302, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 304, Col: 41}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</span></div><div class=\"flex items-center justify-between gap-4\"><span class=\"text-[#63685F]\">Delivery</span> <span class=\"text-right text-[#63685F]\">Calculated at checkout</span></div></div><div class=\"my-5 h-px w-full bg-[#E5E8DF]\"></div><div class=\"flex items-center justify-between gap-4\"><span class=\"flex items-center gap-2 text-base font-semibold text-[#20231F]\">Total <span class=\"text-sm font-medium text-[#4A5443]\">(For Now)</span></span> <span class=\"text-lg font-bold text-[#283B28]\" data-text=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var18 string
-		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.ResolveAttributeValue(cartSubtotalTextExpr())
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 319, Col: 40}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -454,29 +451,55 @@ func CartContent(items []db.GetCartItemsRow) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var19 string
-		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(cartPriceLabel(cartInitialSubtotal(items)))
+		var templ_7745c5c3_Var18 string
+		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(cartPriceLabel(cartInitialSubtotal(items)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 320, Col: 50}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 305, Col: 51}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</span></div><button type=\"button\" data-attr:disabled=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</span></div><div class=\"flex items-center justify-between gap-4\"><span class=\"text-[#63685F]\">Delivery</span> <span class=\"text-right text-[#63685F]\">Calculated at checkout</span></div></div><div class=\"my-5 h-px w-full bg-[#E5E8DF]\"></div><div class=\"flex items-center justify-between gap-4\"><span class=\"flex items-center gap-2 text-base font-semibold text-[#20231F]\">Total <span class=\"text-sm font-medium text-[#4A5443]\">(For Now)</span></span> <span class=\"text-lg font-bold text-[#283B28]\" data-text=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var19 string
+		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.ResolveAttributeValue(cartSubtotalTextExpr())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 322, Col: 40}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var20 string
-		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.ResolveAttributeValue(cartSubtotalExpr() + " === 0")
+		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(cartPriceLabel(cartInitialSubtotal(items)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 325, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 323, Col: 50}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var20)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\" class=\"mt-6 w-full rounded-xl bg-[#283B28] px-5 py-3 text-sm font-semibold text-[#F7F8F5] transition hover:bg-[#20261F] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#283B28]\">Checkout</button></aside></div></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</span></div><form method=\"post\" action=\"/cart/checkout\"><input name=\"items\" data-attr:value=\"JSON.stringify($cart.filter(item => item.selected).map(item => ({variant_id: item.variant_id, quantity: item.quantity})))\" type=\"hidden\"> <button type=\"submit\" data-attr:disabled=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var21 string
+		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.ResolveAttributeValue(cartSubtotalExpr() + " === 0")
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 333, Col: 56}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var21)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\" class=\"mt-6 w-full rounded-xl bg-[#283B28] px-5 py-3 text-sm font-semibold text-[#F7F8F5] transition hover:bg-[#20261F] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#283B28]\">Checkout</button></form></aside></div></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -500,17 +523,17 @@ func CartItems(items []db.GetCartItemsRow) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var21 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var21 == nil {
-			templ_7745c5c3_Var21 = templ.NopComponent
+		templ_7745c5c3_Var22 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var22 == nil {
+			templ_7745c5c3_Var22 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<div id=\"cart-items\" class=\"space-y-4\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div id=\"cart-items\" class=\"space-y-4\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if len(items) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<div class=\"rounded-2xl border border-dashed border-[#DCE2D7] bg-white px-6 py-14 text-center\"><p class=\"text-base font-semibold text-[#20231F]\">Your cart is empty</p><p class=\"mt-1 text-sm text-[#63685F]\">Add a few favourites and they will show up here.</p><a href=\"/#collection\" class=\"mt-5 inline-flex items-center justify-center rounded-full bg-[#283B28] px-5 py-2.5 text-sm font-semibold text-[#F7F8F5] transition hover:bg-[#20261F]\">Explore collection</a></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<div class=\"rounded-2xl border border-dashed border-[#DCE2D7] bg-white px-6 py-14 text-center\"><p class=\"text-base font-semibold text-[#20231F]\">Your cart is empty</p><p class=\"mt-1 text-sm text-[#63685F]\">Add a few favourites and they will show up here.</p><a href=\"/#collection\" class=\"mt-5 inline-flex items-center justify-center rounded-full bg-[#283B28] px-5 py-2.5 text-sm font-semibold text-[#F7F8F5] transition hover:bg-[#20261F]\">Explore collection</a></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -522,7 +545,7 @@ func CartItems(items []db.GetCartItemsRow) templ.Component {
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -546,233 +569,233 @@ func cartItem(i int, item db.GetCartItemsRow) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var22 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var22 == nil {
-			templ_7745c5c3_Var22 = templ.NopComponent
+		templ_7745c5c3_Var23 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var23 == nil {
+			templ_7745c5c3_Var23 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<article class=\"rounded-2xl border border-[#E5E8DF] bg-white p-3 sm:p-4\"><div class=\"flex gap-3 sm:gap-4\"><input type=\"checkbox\" data-attr:checked=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var23 string
-		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.ResolveAttributeValue(cartSelectedExpr(i))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 361, Col: 43}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var23)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "\" data-on:change=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<article class=\"rounded-2xl border border-[#E5E8DF] bg-white p-3 sm:p-4\"><div class=\"flex gap-3 sm:gap-4\"><input type=\"checkbox\" data-attr:checked=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var24 string
-		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.ResolveAttributeValue(cartSelectedExpr(i) + " = evt.target.checked")
+		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.ResolveAttributeValue(cartSelectedExpr(i))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 362, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 370, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var24)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "\" aria-label=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "\" data-on:change=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var25 string
-		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.ResolveAttributeValue("Select " + item.ProductName)
+		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.ResolveAttributeValue(cartSelectedExpr(i) + " = evt.target.checked")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 363, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 371, Col: 66}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var25)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "\" class=\"mt-1 h-4 w-4 shrink-0 cursor-pointer rounded border-[#CFD6C8] accent-[#283B28]\"> <img src=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "\" aria-label=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var26 string
-		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.ResolveAttributeValue(item.Image)
+		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.ResolveAttributeValue("Select " + item.ProductName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 368, Col: 20}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 372, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var26)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "\" alt=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\" class=\"mt-1 h-4 w-4 shrink-0 cursor-pointer rounded border-[#CFD6C8] accent-[#283B28]\"> <img src=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var27 string
-		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.ResolveAttributeValue(item.ProductName)
+		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.ResolveAttributeValue(item.Image)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 369, Col: 26}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 377, Col: 20}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var27)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\" class=\"h-24 w-20 shrink-0 rounded-xl object-cover sm:h-28 sm:w-24\"><div class=\"min-w-0 flex-1\"><h2 class=\"truncate text-sm font-semibold text-[#20231F] sm:text-base\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\" alt=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var28 string
-		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(item.ProductName)
+		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.ResolveAttributeValue(item.ProductName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 374, Col: 93}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 378, Col: 26}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var28)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</h2><p class=\"mt-1 text-xs text-[#63685F] sm:text-sm\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "\" class=\"h-24 w-20 shrink-0 rounded-xl object-cover sm:h-28 sm:w-24\"><div class=\"min-w-0 flex-1\"><h2 class=\"truncate text-sm font-semibold text-[#20231F] sm:text-base\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var29 string
-		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(item.Color + " / " + item.Size)
+		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(item.ProductName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 375, Col: 87}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 383, Col: 93}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "</p><p class=\"mt-2 text-sm font-semibold text-[#283B28]\" data-text=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</h2><p class=\"mt-1 text-xs text-[#63685F] sm:text-sm\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var30 string
-		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.ResolveAttributeValue(cartLineTotalExpr(i))
+		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(item.Color + " / " + item.Size)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 378, Col: 37}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 384, Col: 87}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var30)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</p><p class=\"mt-2 text-sm font-semibold text-[#283B28]\" data-text=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var31 string
-		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(cartPriceLabel(item.Price * float64(item.Quantity)))
+		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.ResolveAttributeValue(cartLineTotalExpr(i))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 379, Col: 58}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 387, Col: 37}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var31)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</p><div class=\"mt-3 flex items-center justify-between gap-3\"><div class=\"inline-flex h-9 items-center rounded-lg border border-[#DCE2D7] bg-white\"><button type=\"button\" data-on:click=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var32 string
-		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.ResolveAttributeValue(cartDecreaseExpr(i))
+		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(cartPriceLabel(item.Price * float64(item.Quantity)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 385, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 388, Col: 58}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var32)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "\" data-attr:disabled=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</p><div class=\"mt-3 flex items-center justify-between gap-3\"><div class=\"inline-flex h-9 items-center rounded-lg border border-[#DCE2D7] bg-white\"><button type=\"button\" data-on:click=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var33 string
-		templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.ResolveAttributeValue(cartQtyExpr(i) + " <= 1")
+		templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.ResolveAttributeValue(cartDecreaseExpr(i))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 386, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 394, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var33)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "\" class=\"flex h-full w-9 items-center justify-center text-base font-semibold text-[#4A5443] transition hover:bg-[#F3F5F0] disabled:cursor-not-allowed disabled:text-[#B0B7AA] disabled:hover:bg-transparent\" aria-label=\"Decrease quantity\">−</button> <span class=\"flex h-full w-10 items-center justify-center border-x border-[#E5E8DF] text-sm font-semibold text-[#20231F]\" data-text=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "\" data-attr:disabled=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var34 string
-		templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.ResolveAttributeValue(cartQtyExpr(i))
+		templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.ResolveAttributeValue(cartQtyExpr(i) + " <= 1")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 394, Col: 33}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 395, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var34)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "\" class=\"flex h-full w-9 items-center justify-center text-base font-semibold text-[#4A5443] transition hover:bg-[#F3F5F0] disabled:cursor-not-allowed disabled:text-[#B0B7AA] disabled:hover:bg-transparent\" aria-label=\"Decrease quantity\">−</button> <span class=\"flex h-full w-10 items-center justify-center border-x border-[#E5E8DF] text-sm font-semibold text-[#20231F]\" data-text=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var35 string
-		templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(int(item.Quantity)))
+		templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.ResolveAttributeValue(cartQtyExpr(i))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 395, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 403, Col: 33}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var35)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</span> <button type=\"button\" data-on:click=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var36 string
-		templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.ResolveAttributeValue(cartIncreaseExpr(i))
+		templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(int(item.Quantity)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 398, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 404, Col: 41}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var36)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "\" data-attr:disabled=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "</span> <button type=\"button\" data-on:click=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var37 string
-		templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.ResolveAttributeValue(cartQtyExpr(i) + " >= " + cartStockExpr(i))
+		templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.ResolveAttributeValue(cartIncreaseExpr(i))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 399, Col: 70}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 407, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var37)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "\" class=\"flex h-full w-9 items-center justify-center text-base font-semibold text-[#4A5443] transition hover:bg-[#F3F5F0] disabled:cursor-not-allowed disabled:text-[#B0B7AA] disabled:hover:bg-transparent\" aria-label=\"Increase quantity\">+</button></div><form data-on:submit__prevent=\"@post('/remove/cart', {contentType: 'form'})\"><input type=\"hidden\" name=\"variant_id\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "\" data-attr:disabled=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var38 string
-		templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(int(item.VariantID)))
+		templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.ResolveAttributeValue(cartQtyExpr(i) + " >= " + cartStockExpr(i))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 413, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 408, Col: 70}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var38)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "\"> <button type=\"submit\" aria-label=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "\" class=\"flex h-full w-9 items-center justify-center text-base font-semibold text-[#4A5443] transition hover:bg-[#F3F5F0] disabled:cursor-not-allowed disabled:text-[#B0B7AA] disabled:hover:bg-transparent\" aria-label=\"Increase quantity\">+</button></div><form data-on:submit__prevent=\"@post('/remove/cart', {contentType: 'form'})\"><input type=\"hidden\" name=\"variant_id\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var39 string
-		templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.ResolveAttributeValue("Remove " + item.ProductName)
+		templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(int(item.VariantID)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 417, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 422, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var39)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "\" title=\"Remove item\" class=\"flex h-9 w-9 items-center justify-center rounded-lg border border-[#E5E8DF] text-[#8A9285] transition hover:border-[#B45A45] hover:bg-[#FDF5F3] hover:text-[#B45A45]\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"h-4 w-4\" aria-hidden=\"true\"><path d=\"M3 6h18\"></path> <path d=\"M8 6V4h8v2\"></path> <path d=\"M19 6l-1 14H6L5 6\"></path> <path d=\"M10 11v5M14 11v5\"></path></svg></button></form></div></div></div></article>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "\"> <button type=\"submit\" aria-label=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var40 string
+		templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.ResolveAttributeValue("Remove " + item.ProductName)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 426, Col: 48}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var40)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "\" title=\"Remove item\" class=\"flex h-9 w-9 items-center justify-center rounded-lg border border-[#E5E8DF] text-[#8A9285] transition hover:border-[#B45A45] hover:bg-[#FDF5F3] hover:text-[#B45A45]\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"h-4 w-4\" aria-hidden=\"true\"><path d=\"M3 6h18\"></path> <path d=\"M8 6V4h8v2\"></path> <path d=\"M19 6l-1 14H6L5 6\"></path> <path d=\"M10 11v5M14 11v5\"></path></svg></button></form></div></div></div></article>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -780,7 +803,7 @@ func cartItem(i int, item db.GetCartItemsRow) templ.Component {
 	})
 }
 
-func ordersContent() templ.Component {
+func ordersContent(orders []OrderView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -796,12 +819,137 @@ func ordersContent() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var40 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var40 == nil {
-			templ_7745c5c3_Var40 = templ.NopComponent
+		templ_7745c5c3_Var41 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var41 == nil {
+			templ_7745c5c3_Var41 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<section data-show=\"$activetab === 'orders'\" class=\"px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8\"><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">Orders</h1><p class=\"mt-2 text-sm text-[#63685F]\">Your order history will show up here.</p></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<section data-show=\"$activetab === 'orders'\" class=\"px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8\"><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">Orders</h1><p class=\"mt-2 text-sm text-[#63685F]\">Follow your orders and open one to see its items and delivery details.</p>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if len(orders) == 0 {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<div class=\"mt-6 rounded-2xl border border-dashed border-[#DCE2D7] bg-white px-6 py-14 text-center\"><p class=\"text-base font-semibold text-[#20231F]\">You have not placed any orders yet</p><p class=\"mt-1 text-sm text-[#63685F]\">When you place an order, it will show up here so you can track it.</p><a href=\"/#collection\" class=\"mt-5 inline-flex items-center justify-center rounded-full bg-[#283B28] px-5 py-2.5 text-sm font-semibold text-[#F7F8F5] transition hover:bg-[#20261F]\">Start shopping</a></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "<div class=\"mt-6 overflow-x-auto rounded-2xl border border-[#E5E8DF] bg-white\"><table class=\"min-w-full divide-y divide-[#E5E8DF] text-left text-sm\"><thead class=\"bg-[#F7F8F5] text-[11px] font-semibold uppercase tracking-wide text-[#8A9285]\"><tr><th class=\"whitespace-nowrap px-4 py-3\">Order</th><th class=\"whitespace-nowrap px-4 py-3\">Date</th><th class=\"whitespace-nowrap px-4 py-3\">Items</th><th class=\"whitespace-nowrap px-4 py-3\">Total</th><th class=\"whitespace-nowrap px-4 py-3\">Status</th><th class=\"whitespace-nowrap px-4 py-3\"></th></tr></thead> <tbody class=\"divide-y divide-[#E5E8DF] text-[#20231F]\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			for _, o := range orders {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<tr class=\"align-middle\"><td class=\"whitespace-nowrap px-4 py-3 font-semibold\">#")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var42 string
+				templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(int(o.ID)))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 485, Col: 88}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "</td><td class=\"whitespace-nowrap px-4 py-3 text-[#63685F]\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var43 string
+				templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(formatDate(o.CreatedAt))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 486, Col: 88}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "</td><td class=\"whitespace-nowrap px-4 py-3 text-[#63685F]\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var44 string
+				templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(int(o.TotalQuantity)))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 487, Col: 99}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "</td><td class=\"whitespace-nowrap px-4 py-3 font-semibold\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var45 string
+				templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(formatPrice(o.TotalAmount))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 488, Col: 90}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "</td><td class=\"whitespace-nowrap px-4 py-3\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var46 = []any{"rounded-full px-3 py-1 text-xs font-semibold " + orderStatusClass(o.Status)}
+				templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var46...)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<span class=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var47 string
+				templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var46).String())
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 1, Col: 0}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var47)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var48 string
+				templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(orderStatusLabel(o.Status))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 491, Col: 38}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "</span></td><td class=\"whitespace-nowrap px-4 py-3 text-right\"><button type=\"button\" data-on:click=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var49 string
+				templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.ResolveAttributeValue("@get('/orders/" + strconv.Itoa(int(o.ID)) + "')")
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/profile.templ`, Line: 497, Col: 75}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var49)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "\" class=\"rounded-lg border border-[#DFE5DA] bg-white px-3 py-1.5 text-xs font-semibold text-[#283B28] transition hover:bg-[#F0EFE9]\">View</button></td></tr>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "</tbody></table></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "</section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -825,12 +973,12 @@ func messagesContent() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var41 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var41 == nil {
-			templ_7745c5c3_Var41 = templ.NopComponent
+		templ_7745c5c3_Var50 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var50 == nil {
+			templ_7745c5c3_Var50 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "<section data-show=\"$activetab === 'messages'\" class=\"px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8\"><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">Messages</h1><p class=\"mt-2 text-sm text-[#63685F]\">Your conversations will show up here.</p></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "<section data-show=\"$activetab === 'messages'\" class=\"px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8\"><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">Messages</h1><p class=\"mt-2 text-sm text-[#63685F]\">Your conversations will show up here.</p></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -854,12 +1002,12 @@ func reviewsContent() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var42 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var42 == nil {
-			templ_7745c5c3_Var42 = templ.NopComponent
+		templ_7745c5c3_Var51 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var51 == nil {
+			templ_7745c5c3_Var51 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<section data-show=\"$activetab === 'reviews'\" class=\"px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8\"><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">My reviews</h1><p class=\"mt-2 text-sm text-[#63685F]\">Reviews you've written will show up here.</p></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "<section data-show=\"$activetab === 'reviews'\" class=\"px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8\"><h1 class=\"text-2xl font-semibold tracking-tight text-[#20231F]\">My reviews</h1><p class=\"mt-2 text-sm text-[#63685F]\">Reviews you've written will show up here.</p></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -867,7 +1015,7 @@ func reviewsContent() templ.Component {
 	})
 }
 
-func ProfileRenderer(user *db.User, tab string, cartItems []db.GetCartItemsRow) templ.Component {
+func ProfileRenderer(user *db.User, tab string, cartItems []db.GetCartItemsRow, orders []OrderView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -883,12 +1031,12 @@ func ProfileRenderer(user *db.User, tab string, cartItems []db.GetCartItemsRow) 
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var43 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var43 == nil {
-			templ_7745c5c3_Var43 = templ.NopComponent
+		templ_7745c5c3_Var52 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var52 == nil {
+			templ_7745c5c3_Var52 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Var44 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var53 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -900,13 +1048,13 @@ func ProfileRenderer(user *db.User, tab string, cartItems []db.GetCartItemsRow) 
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = profile(user, tab, cartItems).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = profile(user, tab, cartItems, orders).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = Html("Profile", user, "profile").Render(templ.WithChildren(ctx, templ_7745c5c3_Var44), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Html("Profile", user, "profile").Render(templ.WithChildren(ctx, templ_7745c5c3_Var53), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -115,6 +115,66 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 	return i, err
 }
 
+const createOrder = `-- name: CreateOrder :one
+INSERT INTO orders (
+    customer_id,
+    status,
+    payment_method,
+    total_amount,
+    delivery_address,
+    delivery_district,
+    delivery_phone
+) VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id
+`
+
+type CreateOrderParams struct {
+	CustomerID       int32
+	Status           string
+	PaymentMethod    string
+	TotalAmount      pgtype.Numeric
+	DeliveryAddress  string
+	DeliveryDistrict string
+	DeliveryPhone    string
+}
+
+func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (int32, error) {
+	row := q.db.QueryRow(ctx, createOrder,
+		arg.CustomerID,
+		arg.Status,
+		arg.PaymentMethod,
+		arg.TotalAmount,
+		arg.DeliveryAddress,
+		arg.DeliveryDistrict,
+		arg.DeliveryPhone,
+	)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
+
+const createOrderItem = `-- name: CreateOrderItem :exec
+INSERT INTO order_items (order_id, variant_id, quantity, unit_price)
+VALUES ($1, $2, $3, $4)
+`
+
+type CreateOrderItemParams struct {
+	OrderID   int32
+	VariantID int32
+	Quantity  int32
+	UnitPrice pgtype.Numeric
+}
+
+func (q *Queries) CreateOrderItem(ctx context.Context, arg CreateOrderItemParams) error {
+	_, err := q.db.Exec(ctx, createOrderItem,
+		arg.OrderID,
+		arg.VariantID,
+		arg.Quantity,
+		arg.UnitPrice,
+	)
+	return err
+}
+
 const createProduct = `-- name: CreateProduct :one
 INSERT INTO products (name, description, category_id, base_price, is_active)
 VALUES ($1, $2, $3, $4, $5)
@@ -296,12 +356,40 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 	return i, err
 }
 
+const decreaseVariantStock = `-- name: DecreaseVariantStock :execrows
+UPDATE product_variants
+SET stock = stock - $2
+WHERE id = $1 AND stock >= $2
+`
+
+type DecreaseVariantStockParams struct {
+	ID    int32
+	Stock int32
+}
+
+func (q *Queries) DecreaseVariantStock(ctx context.Context, arg DecreaseVariantStockParams) (int64, error) {
+	result, err := q.db.Exec(ctx, decreaseVariantStock, arg.ID, arg.Stock)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteCategory = `-- name: DeleteCategory :exec
 DELETE FROM categories WHERE id = $1
 `
 
 func (q *Queries) DeleteCategory(ctx context.Context, id int32) error {
 	_, err := q.db.Exec(ctx, deleteCategory, id)
+	return err
+}
+
+const deleteOrder = `-- name: DeleteOrder :exec
+DELETE FROM orders WHERE id = $1
+`
+
+func (q *Queries) DeleteOrder(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, deleteOrder, id)
 	return err
 }
 
@@ -477,6 +565,100 @@ func (q *Queries) GetCategoryProductIDs(ctx context.Context, id int32) ([]int32,
 	return items, nil
 }
 
+const getOrder = `-- name: GetOrder :one
+SELECT
+    o.id,
+    o.customer_id,
+    o.status,
+    o.payment_method,
+    o.payment_status,
+    o.total_amount::float8 AS total_amount,
+    o.delivery_address,
+    o.delivery_district,
+    o.delivery_phone,
+    o.created_at,
+    o.updated_at,
+    u.name AS customer_name,
+    u.phone AS customer_phone,
+    COALESCE(SUM(oi.quantity), 0)::int AS total_quantity
+FROM orders o
+JOIN users u ON u.id = o.customer_id
+LEFT JOIN order_items oi ON oi.order_id = o.id
+WHERE o.id = $1
+GROUP BY o.id, u.name, u.phone
+`
+
+type GetOrderRow struct {
+	ID               int32
+	CustomerID       int32
+	Status           string
+	PaymentMethod    string
+	PaymentStatus    string
+	TotalAmount      float64
+	DeliveryAddress  string
+	DeliveryDistrict string
+	DeliveryPhone    string
+	CreatedAt        pgtype.Timestamp
+	UpdatedAt        pgtype.Timestamp
+	CustomerName     string
+	CustomerPhone    string
+	TotalQuantity    int32
+}
+
+func (q *Queries) GetOrder(ctx context.Context, id int32) (GetOrderRow, error) {
+	row := q.db.QueryRow(ctx, getOrder, id)
+	var i GetOrderRow
+	err := row.Scan(
+		&i.ID,
+		&i.CustomerID,
+		&i.Status,
+		&i.PaymentMethod,
+		&i.PaymentStatus,
+		&i.TotalAmount,
+		&i.DeliveryAddress,
+		&i.DeliveryDistrict,
+		&i.DeliveryPhone,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CustomerName,
+		&i.CustomerPhone,
+		&i.TotalQuantity,
+	)
+	return i, err
+}
+
+const getOrderByCustomer = `-- name: GetOrderByCustomer :one
+SELECT id, status, payment_method, payment_status, total_amount::float8 AS total_amount
+FROM orders
+WHERE id = $1 AND customer_id = $2
+`
+
+type GetOrderByCustomerParams struct {
+	ID         int32
+	CustomerID int32
+}
+
+type GetOrderByCustomerRow struct {
+	ID            int32
+	Status        string
+	PaymentMethod string
+	PaymentStatus string
+	TotalAmount   float64
+}
+
+func (q *Queries) GetOrderByCustomer(ctx context.Context, arg GetOrderByCustomerParams) (GetOrderByCustomerRow, error) {
+	row := q.db.QueryRow(ctx, getOrderByCustomer, arg.ID, arg.CustomerID)
+	var i GetOrderByCustomerRow
+	err := row.Scan(
+		&i.ID,
+		&i.Status,
+		&i.PaymentMethod,
+		&i.PaymentStatus,
+		&i.TotalAmount,
+	)
+	return i, err
+}
+
 const getProduct = `-- name: GetProduct :one
 SELECT id, name, description, category_id, base_price::float8, is_active
 FROM products
@@ -502,6 +684,59 @@ func (q *Queries) GetProduct(ctx context.Context, id int32) (GetProductRow, erro
 		&i.CategoryID,
 		&i.BasePrice,
 		&i.IsActive,
+	)
+	return i, err
+}
+
+const getProductByVariantID = `-- name: GetProductByVariantID :one
+SELECT
+    p.id AS product_id,
+    p.name AS product_name,
+    pv.id AS variant_id,
+    COALESCE(pv.size, '') AS size,
+    COALESCE(pv.color, '') AS color,
+    $1::int AS quantity,
+    COALESCE(pv.price_override, p.base_price)::float8 AS price,
+    COALESCE((
+        SELECT pi.image_url
+        FROM product_images pi
+        WHERE pi.product_id = p.id
+        ORDER BY pi.sort_order ASC, pi.id ASC
+        LIMIT 1
+    ), '')::text AS image_url
+FROM product_variants pv
+JOIN products p ON p.id = pv.product_id
+WHERE pv.id = $2::int
+`
+
+type GetProductByVariantIDParams struct {
+	Quantity  int32
+	VariantID int32
+}
+
+type GetProductByVariantIDRow struct {
+	ProductID   int32
+	ProductName string
+	VariantID   int32
+	Size        string
+	Color       string
+	Quantity    int32
+	Price       float64
+	ImageUrl    string
+}
+
+func (q *Queries) GetProductByVariantID(ctx context.Context, arg GetProductByVariantIDParams) (GetProductByVariantIDRow, error) {
+	row := q.db.QueryRow(ctx, getProductByVariantID, arg.Quantity, arg.VariantID)
+	var i GetProductByVariantIDRow
+	err := row.Scan(
+		&i.ProductID,
+		&i.ProductName,
+		&i.VariantID,
+		&i.Size,
+		&i.Color,
+		&i.Quantity,
+		&i.Price,
+		&i.ImageUrl,
 	)
 	return i, err
 }
@@ -635,7 +870,7 @@ SELECT
             JOIN product_variants pv ON pv.id = oi.variant_id
             JOIN orders o ON o.id = oi.order_id
             WHERE pv.product_id = p.id
-              AND o.status = 'delivered'
+              AND o.status <> 'cancelled'
         ),
         0
     )::int AS sold,
@@ -815,6 +1050,41 @@ func (q *Queries) GetUserRole(ctx context.Context, id int32) (string, error) {
 	return role, err
 }
 
+const getVariantForOrder = `-- name: GetVariantForOrder :one
+SELECT COALESCE(pv.price_override, p.base_price)::float8 AS price, pv.stock, pv.product_id
+FROM product_variants pv
+JOIN products p ON p.id = pv.product_id
+WHERE pv.id = $1
+  AND p.is_active = TRUE
+`
+
+type GetVariantForOrderRow struct {
+	Price     float64
+	Stock     int32
+	ProductID int32
+}
+
+func (q *Queries) GetVariantForOrder(ctx context.Context, id int32) (GetVariantForOrderRow, error) {
+	row := q.db.QueryRow(ctx, getVariantForOrder, id)
+	var i GetVariantForOrderRow
+	err := row.Scan(&i.Price, &i.Stock, &i.ProductID)
+	return i, err
+}
+
+const getVariantPrice = `-- name: GetVariantPrice :one
+SELECT COALESCE(pv.price_override, p.base_price)::float8 AS price
+FROM product_variants pv
+JOIN products p ON p.id = pv.product_id
+WHERE pv.id = $1
+`
+
+func (q *Queries) GetVariantPrice(ctx context.Context, id int32) (float64, error) {
+	row := q.db.QueryRow(ctx, getVariantPrice, id)
+	var price float64
+	err := row.Scan(&price)
+	return price, err
+}
+
 const hasDeliveredProduct = `-- name: HasDeliveredProduct :one
 SELECT EXISTS (
     SELECT 1
@@ -837,6 +1107,22 @@ func (q *Queries) HasDeliveredProduct(ctx context.Context, arg HasDeliveredProdu
 	var delivered bool
 	err := row.Scan(&delivered)
 	return delivered, err
+}
+
+const increaseVariantStock = `-- name: IncreaseVariantStock :exec
+UPDATE product_variants
+SET stock = stock + $2
+WHERE id = $1
+`
+
+type IncreaseVariantStockParams struct {
+	ID    int32
+	Stock int32
+}
+
+func (q *Queries) IncreaseVariantStock(ctx context.Context, arg IncreaseVariantStockParams) error {
+	_, err := q.db.Exec(ctx, increaseVariantStock, arg.ID, arg.Stock)
+	return err
 }
 
 const listCategoriesWithPC = `-- name: ListCategoriesWithPC :many
@@ -916,6 +1202,145 @@ func (q *Queries) ListCategoriesWithProducts(ctx context.Context) ([]ListCategor
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.ProductCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOrderItems = `-- name: ListOrderItems :many
+SELECT
+    oi.order_id,
+    oi.quantity,
+    oi.unit_price::float8 AS unit_price,
+    p.id AS product_id,
+    p.name AS product_name,
+    COALESCE(pv.size, '') AS size,
+    COALESCE(pv.color, '') AS color,
+    COALESCE((
+        SELECT pi.image_url
+        FROM product_images pi
+        WHERE pi.product_id = p.id
+        ORDER BY pi.sort_order ASC, pi.id ASC
+        LIMIT 1
+    ), '')::text AS cover_image
+FROM order_items oi
+JOIN product_variants pv ON pv.id = oi.variant_id
+JOIN products p ON p.id = pv.product_id
+WHERE oi.order_id = ANY($1::int[])
+ORDER BY oi.order_id, oi.id
+`
+
+type ListOrderItemsRow struct {
+	OrderID     int32
+	Quantity    int32
+	UnitPrice   float64
+	ProductID   int32
+	ProductName string
+	Size        string
+	Color       string
+	CoverImage  string
+}
+
+func (q *Queries) ListOrderItems(ctx context.Context, orderIds []int32) ([]ListOrderItemsRow, error) {
+	rows, err := q.db.Query(ctx, listOrderItems, orderIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListOrderItemsRow
+	for rows.Next() {
+		var i ListOrderItemsRow
+		if err := rows.Scan(
+			&i.OrderID,
+			&i.Quantity,
+			&i.UnitPrice,
+			&i.ProductID,
+			&i.ProductName,
+			&i.Size,
+			&i.Color,
+			&i.CoverImage,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOrders = `-- name: ListOrders :many
+SELECT
+    o.id,
+    o.customer_id,
+    o.status,
+    o.payment_method,
+    o.payment_status,
+    o.total_amount::float8 AS total_amount,
+    o.delivery_address,
+    o.delivery_district,
+    o.delivery_phone,
+    o.created_at,
+    o.updated_at,
+    u.name AS customer_name,
+    u.phone AS customer_phone,
+    COALESCE(SUM(oi.quantity), 0)::int AS total_quantity
+FROM orders o
+JOIN users u ON u.id = o.customer_id
+LEFT JOIN order_items oi ON oi.order_id = o.id
+WHERE ($1::int = 0 OR o.customer_id = $1::int)
+GROUP BY o.id, u.name, u.phone
+ORDER BY o.created_at DESC, o.id DESC
+`
+
+type ListOrdersRow struct {
+	ID               int32
+	CustomerID       int32
+	Status           string
+	PaymentMethod    string
+	PaymentStatus    string
+	TotalAmount      float64
+	DeliveryAddress  string
+	DeliveryDistrict string
+	DeliveryPhone    string
+	CreatedAt        pgtype.Timestamp
+	UpdatedAt        pgtype.Timestamp
+	CustomerName     string
+	CustomerPhone    string
+	TotalQuantity    int32
+}
+
+func (q *Queries) ListOrders(ctx context.Context, customerID int32) ([]ListOrdersRow, error) {
+	rows, err := q.db.Query(ctx, listOrders, customerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListOrdersRow
+	for rows.Next() {
+		var i ListOrdersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CustomerID,
+			&i.Status,
+			&i.PaymentMethod,
+			&i.PaymentStatus,
+			&i.TotalAmount,
+			&i.DeliveryAddress,
+			&i.DeliveryDistrict,
+			&i.DeliveryPhone,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CustomerName,
+			&i.CustomerPhone,
+			&i.TotalQuantity,
 		); err != nil {
 			return nil, err
 		}
@@ -1182,7 +1607,7 @@ WITH cards AS (
         COALESCE((SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.sort_order ASC LIMIT 1), '') AS cover_image,
         COALESCE((SELECT AVG(pr.rating) FROM product_reviews pr WHERE pr.product_id = p.id), 0)::float8 AS rating,
         (SELECT COUNT(*) FROM product_reviews pr WHERE pr.product_id = p.id)::int AS review_count,
-        COALESCE((SELECT SUM(oi.quantity) FROM order_items oi JOIN product_variants pv ON pv.id = oi.variant_id JOIN orders o ON o.id = oi.order_id WHERE pv.product_id = p.id AND o.status = 'delivered'), 0)::int AS sold,
+        COALESCE((SELECT SUM(oi.quantity) FROM order_items oi JOIN product_variants pv ON pv.id = oi.variant_id JOIN orders o ON o.id = oi.order_id WHERE pv.product_id = p.id AND o.status <> 'cancelled'), 0)::int AS sold,
         COALESCE((SELECT SUM(pv.stock) FROM product_variants pv WHERE pv.product_id = p.id), 0)::int AS stock,
         LOWER(
             p.name || ' ' || c.name || ' ' ||
@@ -1300,13 +1725,18 @@ func (q *Queries) ProductNameTakenForUpdate(ctx context.Context, arg ProductName
 
 const recordProductCart = `-- name: RecordProductCart :exec
 INSERT INTO product_stats (product_id, day, carts)
-VALUES ($1, CURRENT_DATE, 1)
+VALUES ($1, CURRENT_DATE, $2)
 ON CONFLICT (product_id, day)
-DO UPDATE SET carts = product_stats.carts + 1
+DO UPDATE SET carts = product_stats.carts + $2
 `
 
-func (q *Queries) RecordProductCart(ctx context.Context, productID int32) error {
-	_, err := q.db.Exec(ctx, recordProductCart, productID)
+type RecordProductCartParams struct {
+	ProductID int32
+	Quantity  int32
+}
+
+func (q *Queries) RecordProductCart(ctx context.Context, arg RecordProductCartParams) error {
+	_, err := q.db.Exec(ctx, recordProductCart, arg.ProductID, arg.Quantity)
 	return err
 }
 
@@ -1352,6 +1782,26 @@ type RemoveCartItemParams struct {
 func (q *Queries) RemoveCartItem(ctx context.Context, arg RemoveCartItemParams) error {
 	_, err := q.db.Exec(ctx, removeCartItem, arg.CustomerID, arg.VariantID)
 	return err
+}
+
+const subtractOrderedCartQuantity = `-- name: SubtractOrderedCartQuantity :execrows
+UPDATE cart_items
+SET quantity = quantity - $3
+WHERE customer_id = $1 AND variant_id = $2 AND quantity > $3
+`
+
+type SubtractOrderedCartQuantityParams struct {
+	CustomerID int32
+	VariantID  int32
+	Quantity   int32
+}
+
+func (q *Queries) SubtractOrderedCartQuantity(ctx context.Context, arg SubtractOrderedCartQuantityParams) (int64, error) {
+	result, err := q.db.Exec(ctx, subtractOrderedCartQuantity, arg.CustomerID, arg.VariantID, arg.Quantity)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateCategory = `-- name: UpdateCategory :one
@@ -1419,6 +1869,44 @@ func (q *Queries) UpdateCategoryWithImage(ctx context.Context, arg UpdateCategor
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const updateOrderPaymentStatus = `-- name: UpdateOrderPaymentStatus :execrows
+UPDATE orders
+SET payment_status = $2, updated_at = NOW()
+WHERE id = $1
+`
+
+type UpdateOrderPaymentStatusParams struct {
+	ID            int32
+	PaymentStatus string
+}
+
+func (q *Queries) UpdateOrderPaymentStatus(ctx context.Context, arg UpdateOrderPaymentStatusParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateOrderPaymentStatus, arg.ID, arg.PaymentStatus)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updateOrderStatus = `-- name: UpdateOrderStatus :execrows
+UPDATE orders
+SET status = $2, updated_at = NOW()
+WHERE id = $1
+`
+
+type UpdateOrderStatusParams struct {
+	ID     int32
+	Status string
+}
+
+func (q *Queries) UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateOrderStatus, arg.ID, arg.Status)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateProduct = `-- name: UpdateProduct :one

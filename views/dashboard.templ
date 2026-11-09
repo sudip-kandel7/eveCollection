@@ -14,8 +14,8 @@ func textOrEmpty(t pgtype.Text) string {
 	return t.String
 }
 
-templ dashboard(user *db.User, tab string, categories []db.ListCategoriesWithPCRow, products []db.ListProductsRow) {
-	<div class="mx-auto flex w-full flex-1 flex-col lg:flex-row" data-signals:activetab={"'" + tab + "'"}>
+templ dashboard(user *db.User, tab string, categories []db.ListCategoriesWithPCRow, products []db.ListProductsRow, orders []OrderView) {
+	<div class="mx-auto flex w-full flex-1 flex-col lg:flex-row" data-signals:activetab={"'" + tab + "'"} data-signals:orderModalOpen="false">
 		<aside class="w-full shrink-0 border-b border-gray-200 bg-white lg:w-64 lg:border-b-0 lg:border-r">
 			<div class="px-4 py-4 sm:px-6 sm:py-6 lg:px-6 lg:py-8">
 				<h2 class="text-lg font-semibold text-gray-900">My Account</h2>
@@ -33,12 +33,14 @@ templ dashboard(user *db.User, tab string, categories []db.ListCategoriesWithPCR
 
 		<div class="flex-1">
 			@OverviewContent(user)
-			@OrdersAdminContent()
+			@OrdersAdminContent(orders)
 			@CategoryAdminContent(categories)
 			@ProductsAdminContent(categories, products)
 			@MessagesAdminContent()
 			@ReviewsAdminContent()
 		</div>
+
+		@OrderModal()
 	</div>
 }
 
@@ -463,10 +465,79 @@ templ ProductsList(products []db.ListProductsRow) {
 	</div>
 }
 
-templ OrdersAdminContent() {
-	<section data-show="$activetab === 'orders'" class="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8">
+templ OrdersAdminContent(orders []OrderView) {
+	<section id="orders-admin" data-show="$activetab === 'orders'" class="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8">
 		<h1 class="text-2xl font-semibold tracking-tight text-[#20231F]">Orders</h1>
-		<p class="mt-2 text-sm text-[#63685F]">Your order history will show up here.</p>
+		<p class="mt-2 text-sm text-[#63685F]">Manage orders, update their status, and confirm cash payments.</p>
+
+		if len(orders) == 0 {
+			<div class="mt-6 rounded-2xl border border-dashed border-[#DCE2D7] bg-white px-6 py-14 text-center">
+				<p class="text-base font-semibold text-[#20231F]">No orders yet</p>
+				<p class="mt-1 text-sm text-[#63685F]">Orders placed by customers will appear here.</p>
+			</div>
+		} else {
+			<div class="mt-6 overflow-x-auto rounded-2xl border border-[#E5E8DF] bg-white">
+				<table class="min-w-full divide-y divide-[#E5E8DF] text-left text-sm">
+					<thead class="bg-[#F7F8F5] text-[11px] font-semibold uppercase tracking-wide text-[#8A9285]">
+						<tr>
+							<th class="whitespace-nowrap px-4 py-3">Order</th>
+							<th class="whitespace-nowrap px-4 py-3">Date</th>
+							<th class="whitespace-nowrap px-4 py-3">Customer</th>
+							<th class="whitespace-nowrap px-4 py-3">Qty</th>
+							<th class="whitespace-nowrap px-4 py-3">Total</th>
+							<th class="whitespace-nowrap px-4 py-3">Payment</th>
+							<th class="whitespace-nowrap px-4 py-3">Status</th>
+							<th class="whitespace-nowrap px-4 py-3"></th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-[#E5E8DF] text-[#20231F]">
+						for _, o := range orders {
+							<tr class="align-middle">
+								<td class="whitespace-nowrap px-4 py-3 font-semibold">#{ strconv.Itoa(int(o.ID)) }</td>
+								<td class="whitespace-nowrap px-4 py-3 text-[#63685F]">{ formatDate(o.CreatedAt) }</td>
+								<td class="px-4 py-3">
+									<p class="font-medium">{ o.CustomerName }</p>
+									<p class="text-xs text-[#8A9285]">{ o.CustomerPhone }</p>
+								</td>
+								<td class="whitespace-nowrap px-4 py-3 text-[#63685F]">{ strconv.Itoa(int(o.TotalQuantity)) }</td>
+								<td class="whitespace-nowrap px-4 py-3 font-semibold">{ formatPrice(o.TotalAmount) }</td>
+								<td class="whitespace-nowrap px-4 py-3">
+									<p class="text-xs font-medium text-[#63685F]">{ orderPaymentLabel(o.PaymentMethod) }</p>
+									if o.PaymentMethod == "cod" {
+										<form data-on:change__prevent={ "@post('/admin/orders/" + strconv.Itoa(int(o.ID)) + "/payment', {contentType: 'form'})" }>
+											<select name="payment_status" class="mt-1 rounded-lg border border-[#DFE5DA] bg-white px-2 py-1 text-xs text-[#20231F] outline-none focus:border-[#283B28]">
+												<option value="pending" selected?={ o.PaymentStatus == "pending" }>Pending</option>
+												<option value="paid" selected?={ o.PaymentStatus == "paid" }>Paid</option>
+											</select>
+										</form>
+									} else {
+										<span class="rounded-full bg-[#EEF3E7] px-2 py-0.5 text-[11px] font-semibold text-[#5B744E]">{ paymentStatusLabel(o.PaymentStatus) }</span>
+									}
+								</td>
+								<td class="whitespace-nowrap px-4 py-3">
+									<form data-on:change__prevent={ "@post('/admin/orders/" + strconv.Itoa(int(o.ID)) + "/status', {contentType: 'form'})" }>
+										<select name="status" class="rounded-lg border border-[#DFE5DA] bg-white px-2 py-1 text-xs font-medium text-[#20231F] outline-none focus:border-[#283B28]">
+											for _, status := range orderStatuses {
+												<option value={ status } selected?={ o.Status == status }>{ orderStatusLabel(status) }</option>
+											}
+										</select>
+									</form>
+								</td>
+								<td class="whitespace-nowrap px-4 py-3 text-right">
+									<button
+										type="button"
+										data-on:click={ "@get('/admin/orders/" + strconv.Itoa(int(o.ID)) + "')" }
+										class="rounded-lg border border-[#DFE5DA] bg-white px-3 py-1.5 text-xs font-semibold text-[#283B28] transition hover:bg-[#F0EFE9]"
+									>
+										View
+									</button>
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		}
 	</section>
 }
 
@@ -484,8 +555,8 @@ templ ReviewsAdminContent() {
 	</section>
 }
 
-templ DashboardRenderer(user *db.User, tab string, categories []db.ListCategoriesWithPCRow, products []db.ListProductsRow) {
+templ DashboardRenderer(user *db.User, tab string, categories []db.ListCategoriesWithPCRow, products []db.ListProductsRow, orders []OrderView) {
 	@Html("Dashboard", user, "dashboard"){
-		@dashboard(user, tab, categories, products)
+		@dashboard(user, tab, categories, products, orders)
 	}
 }

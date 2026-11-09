@@ -365,10 +365,14 @@ templ productDetail(user *db.User, productDetails db.GetProductDetailRow, images
 								Add to cart
 							</button>
 						</form>
+						<form method="post" action="/buy-now" class="flex-1">
+						<input type="hidden" name="variant_id" data-attr:value={ selectedVariantIDExpr() + " ?? ''" } />
+						<input type="hidden" name="quantity" data-attr:value="$quantity" />
+
 						<button
-							type="button"
+							type="submit"
 							data-attr:disabled={ "!(" + selectedVariantAvailableExpr() + ")" }
-							class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#E6FF75] px-4 py-3 text-sm font-semibold text-[#20261F] transition hover:bg-[#D9F25B] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#E6FF75]"
+							class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#E6FF75] px-4 py-3 text-sm font-semibold text-[#20261F] transition hover:bg-[#D9F25B] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#E6FF75]"
 						>
 							Buy Now
 							<svg
@@ -384,6 +388,7 @@ templ productDetail(user *db.User, productDetails db.GetProductDetailRow, images
 								<path d="M5 12h14M13 6l6 6-6 6"></path>
 							</svg>
 						</button>
+				</form>
 					</div>
 					<p
 						id="cart-status"

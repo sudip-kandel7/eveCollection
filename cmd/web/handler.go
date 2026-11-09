@@ -113,6 +113,23 @@ type cartForm struct {
 	Quantity  string `form:"quantity"`
 }
 
+func validatePhone(form *validator.Validator, phone string) {
+	form.CheckField(validator.NotBlank(phone), "phone", "This field cannot be blank")
+	form.CheckField(validator.Matches(phone, validator.PhoneRX), "phone", "Phone must start with 97 or 98 and contain only digits")
+	form.CheckField(validator.MinChars(phone, 10), "phone", "Phone number must be 10 digits")
+	form.CheckField(validator.MaxChars(phone, 10), "phone", "Phone number must be 10 digits")
+	if len(phone) == 10 {
+		form.CheckField(validator.NotRepeatingDigits(phone[2:]), "phone", "Phone number looks invalid")
+	}
+}
+
+func validateAddress(form *validator.Validator, address string) {
+	form.CheckField(validator.NotBlank(address), "address", "Address cannot be blank")
+	form.CheckField(validator.MaxChars(address, 200), "address", "Address cannot exceed 200 characters")
+	form.CheckField(validator.MinChars(address, 5), "address", "Address looks too short")
+	form.CheckField(validator.Matches(address, validator.AddressRX), "address", "Address contains invalid characters")
+}
+
 func (app *Application) Home(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r)
 
@@ -177,6 +194,10 @@ func (app *Application) ProductDetails(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		app.serverError(w, r, err)
 		return
+	}
+
+	if err := app.queries.RecordProductView(r.Context(), int32(id)); err != nil {
+		app.logger.Error("failed to record product view", "product_id", id, "error", err)
 	}
 
 	productReviews, err := app.queries.ListProductReviews(r.Context(), int32(id))
@@ -408,6 +429,13 @@ func (app *Application) AddToCart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := app.queries.RecordProductCart(r.Context(), db.RecordProductCartParams{
+		ProductID: row.ProductID,
+		Quantity:  int32(quantity),
+	}); err != nil {
+		app.logger.Error("failed to record product cart", "product_id", row.ProductID, "error", err)
+	}
+
 	message := fmt.Sprintf("Added to cart - %d in cart", row.Quantity)
 	if row.Quantity >= row.Stock {
 		message = fmt.Sprintf("Cart is at max available (%d)", row.Stock)
@@ -479,7 +507,23 @@ func (app *Application) Profile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	views.ProfileRenderer(user, "profile", cartItems).Render(r.Context(), w)
+	tab := r.URL.Query().Get("tab")
+	switch tab {
+	case "profile", "cart", "orders", "messages", "reviews":
+	default:
+		tab = "profile"
+	}
+
+	var orders []views.OrderView
+	if tab == "orders" {
+		orders, err = app.loadOrderViews(r, user.ID)
+		if err != nil {
+			app.serverError(w, r, err)
+			return
+		}
+	}
+
+	views.ProfileRenderer(user, tab, cartItems, orders).Render(r.Context(), w)
 }
 
 func (app *Application) About(w http.ResponseWriter, r *http.Request) {
@@ -488,15 +532,213 @@ func (app *Application) About(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *Application) Orders(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/profile?tab=orders", http.StatusSeeOther)
+}
+
+func (app *Application) OrderSuccess(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r)
 
-	cartItems, err := app.getCartItems(r, user.ID)
+	orderID, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil || orderID <= 0 {
+		app.clientError(w, http.StatusNotFound)
+		return
+	}
+
+	order, err := app.queries.GetOrderByCustomer(r.Context(), db.GetOrderByCustomerParams{
+		ID:         int32(orderID),
+		CustomerID: user.ID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			app.clientError(w, http.StatusNotFound)
+			return
+		}
+		app.serverError(w, r, err)
+		return
+	}
+
+	views.OrderSuccessRenderer(user, order).Render(r.Context(), w)
+}
+
+func validOrderStatus(status string) bool {
+	switch status {
+	case "placed", "packed", "out_for_delivery", "delivered":
+		return true
+	}
+	return false
+}
+
+func orderViewFromOrder(order db.GetOrderRow, items []db.ListOrderItemsRow) views.OrderView {
+	return views.OrderView{
+		ID:               order.ID,
+		CustomerName:     order.CustomerName,
+		CustomerPhone:    order.CustomerPhone,
+		Status:           order.Status,
+		PaymentMethod:    order.PaymentMethod,
+		PaymentStatus:    order.PaymentStatus,
+		TotalAmount:      order.TotalAmount,
+		TotalQuantity:    order.TotalQuantity,
+		DeliveryAddress:  order.DeliveryAddress,
+		DeliveryDistrict: order.DeliveryDistrict,
+		DeliveryPhone:    order.DeliveryPhone,
+		CreatedAt:        order.CreatedAt,
+		Items:            items,
+	}
+}
+
+func (app *Application) loadOrderDetail(w http.ResponseWriter, r *http.Request) (db.GetOrderRow, []db.ListOrderItemsRow, bool) {
+	orderID, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil || orderID <= 0 {
+		app.clientError(w, http.StatusNotFound)
+		return db.GetOrderRow{}, nil, false
+	}
+
+	order, err := app.queries.GetOrder(r.Context(), int32(orderID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			app.clientError(w, http.StatusNotFound)
+			return db.GetOrderRow{}, nil, false
+		}
+		app.serverError(w, r, err)
+		return db.GetOrderRow{}, nil, false
+	}
+
+	items, err := app.queries.ListOrderItems(r.Context(), []int32{int32(orderID)})
+	if err != nil {
+		app.serverError(w, r, err)
+		return db.GetOrderRow{}, nil, false
+	}
+
+	return order, items, true
+}
+
+func (app *Application) UpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
+	var form struct {
+		Status string `form:"status"`
+	}
+	if err := app.decodePostForm(r, &form); err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	orderID, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil || orderID <= 0 {
+		app.clientError(w, http.StatusNotFound)
+		return
+	}
+
+	if !validOrderStatus(form.Status) {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	affected, err := app.queries.UpdateOrderStatus(r.Context(), db.UpdateOrderStatusParams{
+		ID:     int32(orderID),
+		Status: form.Status,
+	})
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+	if affected == 0 {
+		app.clientError(w, http.StatusNotFound)
+		return
+	}
+
+	orders, err := app.loadOrderViews(r, 0)
 	if err != nil {
 		app.serverError(w, r, err)
 		return
 	}
 
-	views.ProfileRenderer(user, "orders", cartItems).Render(r.Context(), w)
+	sse := datastar.NewSSE(w, r)
+	sse.PatchElementTempl(views.OrdersAdminContent(orders), datastar.WithSelectorID("orders-admin"))
+}
+
+func (app *Application) UpdateOrderPaymentStatus(w http.ResponseWriter, r *http.Request) {
+	var form struct {
+		PaymentStatus string `form:"payment_status"`
+	}
+	if err := app.decodePostForm(r, &form); err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	orderID, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil || orderID <= 0 {
+		app.clientError(w, http.StatusNotFound)
+		return
+	}
+
+	if form.PaymentStatus != "pending" && form.PaymentStatus != "paid" {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	order, err := app.queries.GetOrder(r.Context(), int32(orderID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			app.clientError(w, http.StatusNotFound)
+			return
+		}
+		app.serverError(w, r, err)
+		return
+	}
+	if order.PaymentMethod != "cod" {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	affected, err := app.queries.UpdateOrderPaymentStatus(r.Context(), db.UpdateOrderPaymentStatusParams{
+		ID:            int32(orderID),
+		PaymentStatus: form.PaymentStatus,
+	})
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+	if affected == 0 {
+		app.clientError(w, http.StatusNotFound)
+		return
+	}
+
+	orders, err := app.loadOrderViews(r, 0)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r)
+	sse.PatchElementTempl(views.OrdersAdminContent(orders), datastar.WithSelectorID("orders-admin"))
+}
+
+func (app *Application) AdminOrderDetail(w http.ResponseWriter, r *http.Request) {
+	order, items, ok := app.loadOrderDetail(w, r)
+	if !ok {
+		return
+	}
+
+	sse := datastar.NewSSE(w, r)
+	sse.PatchElementTempl(views.OrderDetailModal(orderViewFromOrder(order, items), true), datastar.WithSelectorID("order-detail-modal"), datastar.WithModeInner())
+	sse.PatchSignals([]byte(`{"orderModalOpen": true}`))
+}
+
+func (app *Application) CustomerOrderDetail(w http.ResponseWriter, r *http.Request) {
+	user := app.contextGetUser(r)
+
+	order, items, ok := app.loadOrderDetail(w, r)
+	if !ok {
+		return
+	}
+
+	if order.CustomerID != user.ID {
+		app.clientError(w, http.StatusNotFound)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r)
+	sse.PatchElementTempl(views.OrderDetailModal(orderViewFromOrder(order, items), false), datastar.WithSelectorID("order-detail-modal"), datastar.WithModeInner())
+	sse.PatchSignals([]byte(`{"orderModalOpen": true}`))
 }
 
 func (app *Application) Cart(w http.ResponseWriter, r *http.Request) {
@@ -508,10 +750,381 @@ func (app *Application) Cart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = views.ProfileRenderer(user, "cart", cartItems).Render(r.Context(), w)
+	err = views.ProfileRenderer(user, "cart", cartItems, nil).Render(r.Context(), w)
 	if err != nil {
 		app.serverError(w, r, err)
 	}
+}
+
+func (app *Application) Checkout(w http.ResponseWriter, r *http.Request) {
+	user := app.contextGetUser(r)
+
+	raw := app.sessionManager.GetString(r.Context(), "checkout")
+
+	var intent checkoutIntent
+	if raw != "" {
+		if err := json.Unmarshal([]byte(raw), &intent); err != nil {
+			app.serverError(w, r, err)
+			return
+		}
+	}
+
+	var products []db.GetProductByVariantIDRow
+
+	if intent.Source == "product" {
+		if len(intent.Items) == 0 {
+			http.Redirect(w, r, "/product", http.StatusSeeOther)
+			return
+		}
+
+		item := intent.Items[0]
+		product, err := app.queries.GetProductByVariantID(r.Context(), db.GetProductByVariantIDParams{
+			Quantity:  item.Quantity,
+			VariantID: item.VariantID,
+		})
+		if err != nil {
+			app.serverError(w, r, err)
+			return
+		}
+
+		products = append(products, product)
+
+	} else if intent.Source == "cart" {
+		if len(intent.Items) == 0 {
+			http.Redirect(w, r, "/cart", http.StatusSeeOther)
+			return
+		}
+
+		for _, item := range intent.Items {
+			product, err := app.queries.GetProductByVariantID(r.Context(), db.GetProductByVariantIDParams{
+				Quantity:  item.Quantity,
+				VariantID: item.VariantID,
+			})
+			if err != nil {
+				app.serverError(w, r, err)
+				return
+			}
+			products = append(products, product)
+		}
+
+	}
+
+	if err := views.CheckoutRenderer(user, products, intent.Source).Render(r.Context(), w); err != nil {
+		app.serverError(w, r, err)
+	}
+}
+
+type checkoutIntent struct {
+	Source string               `json:"source"`
+	Items  []checkoutIntentItem `json:"items"`
+}
+
+type checkoutIntentItem struct {
+	VariantID int32 `json:"variant_id"`
+	Quantity  int32 `json:"quantity"`
+}
+
+type cartCheckoutForm struct {
+	Items string `form:"items"`
+}
+
+type buynowForm struct {
+	VariantId string `form:"variant_id"`
+	Quantity  string `form:"quantity"`
+}
+
+type placeOrderForm struct {
+	Name                string `form:"name"`
+	Phone               string `form:"phone"`
+	Address             string `form:"address"`
+	District            string `form:"district"`
+	Payment             string `form:"payment"`
+	validator.Validator `form:"-"`
+}
+
+type orderItem struct {
+	VariantID int32
+	ProductID int32
+	Quantity  int32
+	Price     float64
+}
+
+func (app *Application) BuyNow(w http.ResponseWriter, r *http.Request) {
+	var form buynowForm
+	if err := app.decodePostForm(r, &form); err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	id, err := strconv.Atoi(form.VariantId)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	quantity, err := strconv.Atoi(form.Quantity)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	intent := checkoutIntent{
+		Source: "product",
+		Items: []checkoutIntentItem{{
+			VariantID: int32(id),
+			Quantity:  int32(quantity),
+		}},
+	}
+
+	data, err := json.Marshal(intent)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	app.sessionManager.Put(r.Context(), "checkout", string(data))
+	http.Redirect(w, r, "/checkout", http.StatusSeeOther)
+}
+
+func (app *Application) cartCheckout(w http.ResponseWriter, r *http.Request) {
+
+	var form cartCheckoutForm
+	if err := app.decodePostForm(r, &form); err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	var items []checkoutIntentItem
+	if err := json.Unmarshal([]byte(form.Items), &items); err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	intent := checkoutIntent{
+		Source: "cart",
+		Items:  items,
+	}
+
+	data, err := json.Marshal(intent)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	app.sessionManager.Put(r.Context(), "checkout", string(data))
+	http.Redirect(w, r, "/checkout", http.StatusSeeOther)
+}
+
+func (app *Application) PlaceOrder(w http.ResponseWriter, r *http.Request) {
+	user := app.contextGetUser(r)
+	if user == nil {
+		app.clientError(w, http.StatusForbidden)
+		return
+	}
+
+	raw := app.sessionManager.GetString(r.Context(), "checkout")
+
+	var intent checkoutIntent
+	if raw != "" {
+		if err := json.Unmarshal([]byte(raw), &intent); err != nil {
+			app.serverError(w, r, err)
+			return
+		}
+	}
+
+	if len(intent.Items) == 0 {
+		target := "/"
+		if intent.Source == "cart" {
+			target = "/cart"
+		}
+		sse := datastar.NewSSE(w, r)
+		if err := sse.Redirect(target); err != nil {
+			app.serverError(w, r, err)
+		}
+		return
+	}
+
+	var form placeOrderForm
+	if err := app.decodePostForm(r, &form); err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	validatePhone(&form.Validator, form.Phone)
+	validateAddress(&form.Validator, form.Address)
+
+	if !form.Valid() {
+		sse := datastar.NewSSE(w, r)
+		_ = sse.PatchSignals([]byte(`{"checkoutSubmitting": false, "orderError": ""}`))
+		sse.PatchElementTempl(components.CheckoutErrors(form.FieldErrors))
+		return
+	}
+
+	if form.Payment != "cod" && form.Payment != "esewa" {
+		app.patchCheckoutError(w, r, "Please choose a valid payment method.")
+		return
+	}
+
+	total := 0.0
+	if form.District == "Kathmandu" {
+		total = 150
+	} else {
+		total = 250
+	}
+
+	items := make([]orderItem, 0, len(intent.Items))
+	for _, item := range intent.Items {
+		info, err := app.queries.GetVariantForOrder(r.Context(), item.VariantID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				app.patchCheckoutError(w, r, "One of your items is no longer available.")
+				return
+			}
+			app.serverError(w, r, err)
+			return
+		}
+
+		if info.Stock < item.Quantity {
+			app.patchCheckoutError(w, r, "One of your items does not have enough stock.")
+			return
+		}
+
+		total += info.Price * float64(item.Quantity)
+		items = append(items, orderItem{
+			VariantID: item.VariantID,
+			ProductID: info.ProductID,
+			Quantity:  item.Quantity,
+			Price:     info.Price,
+		})
+	}
+
+	totalNumeric, err := numericFromFloat(total)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	orderInfo := db.CreateOrderParams{
+		CustomerID:       user.ID,
+		Status:           "placed",
+		PaymentMethod:    form.Payment,
+		TotalAmount:      totalNumeric,
+		DeliveryAddress:  form.Address,
+		DeliveryDistrict: form.District,
+		DeliveryPhone:    form.Phone,
+	}
+
+	if form.Payment == "esewa" {
+		app.patchCheckoutError(w, r, "eSewa payment is not available yet. Please choose cash on delivery.")
+		return
+	}
+
+	orderId, err := app.queries.CreateOrder(r.Context(), orderInfo)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	cleanupOrder := func() {
+		if err := app.queries.DeleteOrder(r.Context(), orderId); err != nil {
+			app.logger.Error("failed to clean up order", "order_id", orderId, "error", err)
+		}
+	}
+
+	for _, item := range items {
+		unitPrice, err := numericFromFloat(item.Price)
+		if err != nil {
+			cleanupOrder()
+			app.serverError(w, r, err)
+			return
+		}
+
+		err = app.queries.CreateOrderItem(r.Context(), db.CreateOrderItemParams{
+			OrderID:   orderId,
+			VariantID: item.VariantID,
+			Quantity:  item.Quantity,
+			UnitPrice: unitPrice,
+		})
+		if err != nil {
+			cleanupOrder()
+			app.logger.Error("failed to create order item", "order_id", orderId, "error", err)
+			app.patchCheckoutError(w, r, "We could not place your order. Please try again.")
+			return
+		}
+	}
+
+	decremented := make([]orderItem, 0, len(items))
+	for _, item := range items {
+		affected, err := app.queries.DecreaseVariantStock(r.Context(), db.DecreaseVariantStockParams{
+			ID:    item.VariantID,
+			Stock: item.Quantity,
+		})
+		if err != nil || affected == 0 {
+			for _, done := range decremented {
+				_ = app.queries.IncreaseVariantStock(r.Context(), db.IncreaseVariantStockParams{
+					ID:    done.VariantID,
+					Stock: done.Quantity,
+				})
+			}
+			cleanupOrder()
+			if err != nil {
+				app.logger.Error("failed to decrease stock", "variant_id", item.VariantID, "error", err)
+			}
+			app.patchCheckoutError(w, r, "One of your items just went out of stock. Please try again.")
+			return
+		}
+		decremented = append(decremented, item)
+	}
+
+	if intent.Source == "cart" {
+		for _, item := range items {
+			affected, err := app.queries.SubtractOrderedCartQuantity(r.Context(), db.SubtractOrderedCartQuantityParams{
+				CustomerID: user.ID,
+				VariantID:  item.VariantID,
+				Quantity:   item.Quantity,
+			})
+			if err != nil {
+				app.logger.Error("failed to update cart item", "variant_id", item.VariantID, "error", err)
+				continue
+			}
+			if affected == 0 {
+				if err := app.queries.RemoveCartItem(r.Context(), db.RemoveCartItemParams{
+					CustomerID: user.ID,
+					VariantID:  item.VariantID,
+				}); err != nil {
+					app.logger.Error("failed to remove cart item", "variant_id", item.VariantID, "error", err)
+				}
+			}
+		}
+	}
+
+	for _, item := range items {
+		if err := app.queries.RecordProductPurchase(r.Context(), db.RecordProductPurchaseParams{
+			ProductID: item.ProductID,
+			Purchases: item.Quantity,
+		}); err != nil {
+			app.logger.Error("failed to record product purchase", "product_id", item.ProductID, "error", err)
+		}
+	}
+
+	app.sessionManager.Remove(r.Context(), "checkout")
+
+	sse := datastar.NewSSE(w, r)
+	if err := sse.Redirect(fmt.Sprintf("/orders/%d/success", orderId)); err != nil {
+		app.serverError(w, r, err)
+	}
+}
+
+func (app *Application) patchCheckoutError(w http.ResponseWriter, r *http.Request, message string) {
+	sse := datastar.NewSSE(w, r)
+	signals, err := json.Marshal(map[string]any{
+		"orderError":         message,
+		"checkoutSubmitting": false,
+	})
+	if err != nil {
+		return
+	}
+	_ = sse.PatchSignals(signals)
 }
 
 func (app *Application) RemoveFromCart(w http.ResponseWriter, r *http.Request) {
@@ -559,7 +1172,7 @@ func (app *Application) Reviews(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	views.ProfileRenderer(user, "reviews", cartItems).Render(r.Context(), w)
+	views.ProfileRenderer(user, "reviews", cartItems, nil).Render(r.Context(), w)
 }
 
 func (app *Application) Messages(w http.ResponseWriter, r *http.Request) {
@@ -571,7 +1184,7 @@ func (app *Application) Messages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	views.ProfileRenderer(user, "messages", cartItems).Render(r.Context(), w)
+	views.ProfileRenderer(user, "messages", cartItems, nil).Render(r.Context(), w)
 }
 
 func (app *Application) Login(w http.ResponseWriter, r *http.Request) {
@@ -601,7 +1214,60 @@ func (app *Application) Dashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	views.DashboardRenderer(user, "products", categories, products).Render(r.Context(), w)
+	orders, err := app.loadOrderViews(r, 0)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	views.DashboardRenderer(user, "products", categories, products, orders).Render(r.Context(), w)
+}
+
+func (app *Application) loadOrderViews(r *http.Request, customerID int32) ([]views.OrderView, error) {
+	orders, err := app.queries.ListOrders(r.Context(), customerID)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(orders) == 0 {
+		return []views.OrderView{}, nil
+	}
+
+	orderIDs := make([]int32, 0, len(orders))
+	for _, order := range orders {
+		orderIDs = append(orderIDs, order.ID)
+	}
+
+	items, err := app.queries.ListOrderItems(r.Context(), orderIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	itemsByOrder := make(map[int32][]db.ListOrderItemsRow, len(orders))
+	for _, item := range items {
+		itemsByOrder[item.OrderID] = append(itemsByOrder[item.OrderID], item)
+	}
+
+	orderViews := make([]views.OrderView, 0, len(orders))
+	for _, order := range orders {
+		orderViews = append(orderViews, views.OrderView{
+			ID:               order.ID,
+			CustomerName:     order.CustomerName,
+			CustomerPhone:    order.CustomerPhone,
+			Status:           order.Status,
+			PaymentMethod:    order.PaymentMethod,
+			PaymentStatus:    order.PaymentStatus,
+			TotalAmount:      order.TotalAmount,
+			TotalQuantity:    order.TotalQuantity,
+			DeliveryAddress:  order.DeliveryAddress,
+			DeliveryDistrict: order.DeliveryDistrict,
+			DeliveryPhone:    order.DeliveryPhone,
+			CreatedAt:        order.CreatedAt,
+			Items:            itemsByOrder[order.ID],
+		})
+	}
+
+	return orderViews, nil
 }
 
 func (app *Application) SearchProducts(w http.ResponseWriter, r *http.Request) {
@@ -669,18 +1335,8 @@ func (app *Application) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	form.CheckField(!phoneTaken, "phone", "Phone number already in use")
-	form.CheckField(validator.NotBlank(form.Phone), "phone", "This field cannot be blank")
-	form.CheckField(validator.Matches(form.Phone, validator.PhoneRX), "phone", "Phone must start with 97 or 98 and contain only digits")
-	form.CheckField(validator.MinChars(form.Phone, 10), "phone", "Phone number must be 10 digits")
-	form.CheckField(validator.MaxChars(form.Phone, 10), "phone", "Phone number must be 10 digits")
-	if len(form.Phone) == 10 {
-		form.CheckField(validator.NotRepeatingDigits(form.Phone[2:]), "phone", "Phone number looks invalid")
-	}
-
-	form.CheckField(validator.NotBlank(form.Address), "address", "Address cannot be blank")
-	form.CheckField(validator.MaxChars(form.Address, 200), "address", "Address cannot exceed 200 characters")
-	form.CheckField(validator.MinChars(form.Address, 5), "address", "Address looks too short")
-	form.CheckField(validator.Matches(form.Address, validator.AddressRX), "address", "Address contains invalid characters")
+	validatePhone(&form.Validator, form.Phone)
+	validateAddress(&form.Validator, form.Address)
 
 	form.CheckField(validator.NotBlank(form.Password), "password", "This field cannot be blank")
 	form.CheckField(validator.MinChars(form.Password, 8), "password", "Password must be at least 8 characters")
@@ -958,18 +1614,8 @@ func (app *Application) updateProfile(w http.ResponseWriter, r *http.Request) {
 		form.CheckField(!phoneTaken, "phone", "Phone number already in use")
 	}
 
-	form.CheckField(validator.NotBlank(form.Phone), "phone", "This field cannot be blank")
-	form.CheckField(validator.Matches(form.Phone, validator.PhoneRX), "phone", "Phone must start with 97 or 98 and contain only digits")
-	form.CheckField(validator.MinChars(form.Phone, 10), "phone", "Phone number must be 10 digits")
-	form.CheckField(validator.MaxChars(form.Phone, 10), "phone", "Phone number must be 10 digits")
-	if len(form.Phone) == 10 {
-		form.CheckField(validator.NotRepeatingDigits(form.Phone[2:]), "phone", "Phone number looks invalid")
-	}
-
-	form.CheckField(validator.NotBlank(form.Address), "address", "Address cannot be blank")
-	form.CheckField(validator.MaxChars(form.Address, 200), "address", "Address cannot exceed 200 characters")
-	form.CheckField(validator.MinChars(form.Address, 5), "address", "Address looks too short")
-	form.CheckField(validator.Matches(form.Address, validator.AddressRX), "address", "Address contains invalid characters")
+	validatePhone(&form.Validator, form.Phone)
+	validateAddress(&form.Validator, form.Address)
 
 	if !form.Valid() {
 		sse := datastar.NewSSE(w, r)
@@ -1008,7 +1654,7 @@ func (app *Application) updateProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sse := datastar.NewSSE(w, r)
-	sse.PatchElementTempl(views.ProfileRenderer(freshUser, "profile", cartItems))
+	sse.PatchElementTempl(views.ProfileRenderer(freshUser, "profile", cartItems, nil))
 	sse.PatchSignals([]byte(`{"updating": false}`))
 }
 

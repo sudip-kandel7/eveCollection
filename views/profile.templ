@@ -16,8 +16,8 @@ func formatDate(t pgtype.Timestamp) string {
 	return t.Time.Format("January 2, 2006")
 }
 
-templ profile(user *db.User, tab string, cartItems []db.GetCartItemsRow) {
-	<div class="mx-auto flex w-full flex-1 flex-col lg:flex-row" data-signals:activetab={ "'" + tab + "'" }>
+templ profile(user *db.User, tab string, cartItems []db.GetCartItemsRow, orders []OrderView) {
+	<div class="mx-auto flex w-full flex-1 flex-col lg:flex-row" data-signals:activetab={ "'" + tab + "'" } data-signals:orderModalOpen="false">
 
 		<aside class="w-full shrink-0 border-b border-gray-200 bg-white lg:w-64 lg:border-b-0 lg:border-r">
 			<div class="px-4 py-4 sm:px-6 sm:py-6 lg:px-6 lg:py-8">
@@ -41,17 +41,18 @@ templ profile(user *db.User, tab string, cartItems []db.GetCartItemsRow) {
 		<div class="flex-1">
 			@profileContent(user)
 			@CartContent(cartItems)
-			@ordersContent()
+			@ordersContent(orders)
 			@messagesContent()
 			@reviewsContent()
 		</div>
+
+		@OrderModal()
 	</div>
 }
 
 templ accountNavLink(tab, label string) {
-	
-	<a	href="#"
-		data-on:click__prevent={ "$activetab = '" + tab + "'" }
+	<a	href={ "/profile?tab=" + tab }
+		data-on:click__prevent={ "$activetab = '" + tab + "'; history.replaceState({}, '', '/profile?tab=" + tab + "')" }
 		data-attr:class={ "$activetab === '" + tab + "' ? 'mt-0 block shrink-0 whitespace-nowrap rounded-lg bg-gray-100 px-4 py-3 text-sm font-medium text-gray-900' : 'mt-0 block shrink-0 whitespace-nowrap rounded-lg px-4 py-3 text-sm text-gray-600 transition hover:bg-gray-100 lg:mt-1'" }
 	>
 		{ label }
@@ -194,22 +195,24 @@ templ profileContent(user *db.User) {
 }
 
 type cartSignalItem struct {
-	ID       int32   `json:"id"`
-	Selected bool    `json:"selected"`
-	Quantity int32   `json:"quantity"`
-	Price    float64 `json:"price"`
-	Stock    int32   `json:"stock"`
+	ID        int32   `json:"id"`
+	VariantID int32   `json:"variant_id"`
+	Selected  bool    `json:"selected"`
+	Quantity  int32   `json:"quantity"`
+	Price     float64 `json:"price"`
+	Stock     int32   `json:"stock"`
 }
 
 func CartSignals(items []db.GetCartItemsRow) string {
 	cart := make([]cartSignalItem, 0, len(items))
 	for _, item := range items {
 		cart = append(cart, cartSignalItem{
-			ID:       item.ID,
-			Selected: true,
-			Quantity: item.Quantity,
-			Price:    item.Price,
-			Stock:    item.Stock,
+			ID:        item.ID,
+			VariantID: item.VariantID,
+			Selected:  true,
+			Quantity:  item.Quantity,
+			Price:     item.Price,
+			Stock:     item.Stock,
 		})
 	}
 	data, err := json.Marshal(map[string]any{"cart": cart})
@@ -320,13 +323,19 @@ templ CartContent(items []db.GetCartItemsRow) {
 					>{ cartPriceLabel(cartInitialSubtotal(items)) }</span>
 				</div>
 
-				<button
-					type="button"
-					data-attr:disabled={ cartSubtotalExpr() + " === 0" }
-					class="mt-6 w-full rounded-xl bg-[#283B28] px-5 py-3 text-sm font-semibold text-[#F7F8F5] transition hover:bg-[#20261F] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#283B28]"
-				>
-					Checkout
-				</button>
+				<form method="post" action="/cart/checkout">
+					<input
+						name="items"
+						data-attr:value="JSON.stringify($cart.filter(item => item.selected).map(item => ({variant_id: item.variant_id, quantity: item.quantity})))"
+						type="hidden" />
+					<button
+						type="submit"
+						data-attr:disabled={ cartSubtotalExpr() + " === 0" }
+						class="mt-6 w-full rounded-xl bg-[#283B28] px-5 py-3 text-sm font-semibold text-[#F7F8F5] transition hover:bg-[#20261F] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#283B28]" >
+						Checkout
+					</button>
+				</form>
+				
 			</aside>
 		</div>
 	</section>
@@ -441,10 +450,62 @@ templ cartItem(i int, item db.GetCartItemsRow) {
 	</article>
 }
 
-templ ordersContent() {
+templ ordersContent(orders []OrderView) {
 	<section data-show="$activetab === 'orders'" class="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8">
 		<h1 class="text-2xl font-semibold tracking-tight text-[#20231F]">Orders</h1>
-		<p class="mt-2 text-sm text-[#63685F]">Your order history will show up here.</p>
+		<p class="mt-2 text-sm text-[#63685F]">Follow your orders and open one to see its items and delivery details.</p>
+
+		if len(orders) == 0 {
+			<div class="mt-6 rounded-2xl border border-dashed border-[#DCE2D7] bg-white px-6 py-14 text-center">
+				<p class="text-base font-semibold text-[#20231F]">You have not placed any orders yet</p>
+				<p class="mt-1 text-sm text-[#63685F]">When you place an order, it will show up here so you can track it.</p>
+				<a
+					href="/#collection"
+					class="mt-5 inline-flex items-center justify-center rounded-full bg-[#283B28] px-5 py-2.5 text-sm font-semibold text-[#F7F8F5] transition hover:bg-[#20261F]"
+				>
+					Start shopping
+				</a>
+			</div>
+		} else {
+			<div class="mt-6 overflow-x-auto rounded-2xl border border-[#E5E8DF] bg-white">
+				<table class="min-w-full divide-y divide-[#E5E8DF] text-left text-sm">
+					<thead class="bg-[#F7F8F5] text-[11px] font-semibold uppercase tracking-wide text-[#8A9285]">
+						<tr>
+							<th class="whitespace-nowrap px-4 py-3">Order</th>
+							<th class="whitespace-nowrap px-4 py-3">Date</th>
+							<th class="whitespace-nowrap px-4 py-3">Items</th>
+							<th class="whitespace-nowrap px-4 py-3">Total</th>
+							<th class="whitespace-nowrap px-4 py-3">Status</th>
+							<th class="whitespace-nowrap px-4 py-3"></th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-[#E5E8DF] text-[#20231F]">
+						for _, o := range orders {
+							<tr class="align-middle">
+								<td class="whitespace-nowrap px-4 py-3 font-semibold">#{ strconv.Itoa(int(o.ID)) }</td>
+								<td class="whitespace-nowrap px-4 py-3 text-[#63685F]">{ formatDate(o.CreatedAt) }</td>
+								<td class="whitespace-nowrap px-4 py-3 text-[#63685F]">{ strconv.Itoa(int(o.TotalQuantity)) }</td>
+								<td class="whitespace-nowrap px-4 py-3 font-semibold">{ formatPrice(o.TotalAmount) }</td>
+								<td class="whitespace-nowrap px-4 py-3">
+									<span class={ "rounded-full px-3 py-1 text-xs font-semibold " + orderStatusClass(o.Status) }>
+										{ orderStatusLabel(o.Status) }
+									</span>
+								</td>
+								<td class="whitespace-nowrap px-4 py-3 text-right">
+									<button
+										type="button"
+										data-on:click={ "@get('/orders/" + strconv.Itoa(int(o.ID)) + "')" }
+										class="rounded-lg border border-[#DFE5DA] bg-white px-3 py-1.5 text-xs font-semibold text-[#283B28] transition hover:bg-[#F0EFE9]"
+									>
+										View
+									</button>
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		}
 	</section>
 }
 
@@ -462,8 +523,8 @@ templ reviewsContent() {
 	</section>
 }
 
-templ ProfileRenderer(user *db.User, tab string, cartItems []db.GetCartItemsRow) {
+templ ProfileRenderer(user *db.User, tab string, cartItems []db.GetCartItemsRow, orders []OrderView) {
 	@Html("Profile", user, "profile"){
-		@profile(user, tab, cartItems)
+		@profile(user, tab, cartItems, orders)
 	}
 }

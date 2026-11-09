@@ -631,20 +631,33 @@ func productDetail(user *db.User, productDetails db.GetProductDetailRow, images 
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "\" class=\"inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#283B28] px-4 py-3 text-sm font-semibold text-[#F7F8F5] transition hover:bg-[#20261F] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#283B28]\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"h-4 w-4\" aria-hidden=\"true\"><path d=\"M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L21 8H6\"></path> <circle cx=\"10\" cy=\"20\" r=\"1\"></circle> <circle cx=\"18\" cy=\"20\" r=\"1\"></circle></svg> Add to cart</button></form><button type=\"button\" data-attr:disabled=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "\" class=\"inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#283B28] px-4 py-3 text-sm font-semibold text-[#F7F8F5] transition hover:bg-[#20261F] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#283B28]\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"h-4 w-4\" aria-hidden=\"true\"><path d=\"M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L21 8H6\"></path> <circle cx=\"10\" cy=\"20\" r=\"1\"></circle> <circle cx=\"18\" cy=\"20\" r=\"1\"></circle></svg> Add to cart</button></form><form method=\"post\" action=\"/buy-now\" class=\"flex-1\"><input type=\"hidden\" name=\"variant_id\" data-attr:value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var28 string
-		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.ResolveAttributeValue("!(" + selectedVariantAvailableExpr() + ")")
+		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.ResolveAttributeValue(selectedVariantIDExpr() + " ?? ''")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 370, Col: 71}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 369, Col: 97}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var28)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "\" class=\"inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#E6FF75] px-4 py-3 text-sm font-semibold text-[#20261F] transition hover:bg-[#D9F25B] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#E6FF75]\">Buy Now <svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"h-4 w-4\" aria-hidden=\"true\"><path d=\"M5 12h14M13 6l6 6-6 6\"></path></svg></button></div><p id=\"cart-status\" data-show=\"$cartMessage !== ''\" data-text=\"$cartMessage\" data-attr:class=\"$cartError ? 'mt-3 text-sm font-medium text-red-600' : 'mt-3 text-sm font-medium text-[#283B28]'\" class=\"mt-3 text-sm font-medium text-[#283B28]\"></p><div class=\"mt-6 h-[3px] w-full bg-[#E5E8DF]\"></div><button type=\"button\" class=\"mt-4 flex w-full items-center justify-between gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-[#EEF3E7]\"><span class=\"flex items-center gap-2 text-sm font-medium text-[#4A5443]\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"h-4 w-4\" aria-hidden=\"true\"><path d=\"M21 11.5a8.4 8.4 0 0 1-8.5 8.4 8.6 8.6 0 0 1-3.9-.9L3 21l1.9-4.6a8.4 8.4 0 0 1-.9-3.9A8.5 8.5 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z\"></path></svg> Chat with seller</span> <svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"h-4 w-4 text-[#8A9285]\" aria-hidden=\"true\"><path d=\"M5 12h14M13 6l6 6-6 6\"></path></svg></button></div></section><div class=\"mt-12 h-0.5 w-full bg-[#E5E8DF]\"></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "\"> <input type=\"hidden\" name=\"quantity\" data-attr:value=\"$quantity\"> <button type=\"submit\" data-attr:disabled=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var29 string
+		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.ResolveAttributeValue("!(" + selectedVariantAvailableExpr() + ")")
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 374, Col: 71}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var29)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "\" class=\"inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#E6FF75] px-4 py-3 text-sm font-semibold text-[#20261F] transition hover:bg-[#D9F25B] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#E6FF75]\">Buy Now <svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"h-4 w-4\" aria-hidden=\"true\"><path d=\"M5 12h14M13 6l6 6-6 6\"></path></svg></button></form></div><p id=\"cart-status\" data-show=\"$cartMessage !== ''\" data-text=\"$cartMessage\" data-attr:class=\"$cartError ? 'mt-3 text-sm font-medium text-red-600' : 'mt-3 text-sm font-medium text-[#283B28]'\" class=\"mt-3 text-sm font-medium text-[#283B28]\"></p><div class=\"mt-6 h-[3px] w-full bg-[#E5E8DF]\"></div><button type=\"button\" class=\"mt-4 flex w-full items-center justify-between gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-[#EEF3E7]\"><span class=\"flex items-center gap-2 text-sm font-medium text-[#4A5443]\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"h-4 w-4\" aria-hidden=\"true\"><path d=\"M21 11.5a8.4 8.4 0 0 1-8.5 8.4 8.6 8.6 0 0 1-3.9-.9L3 21l1.9-4.6a8.4 8.4 0 0 1-.9-3.9A8.5 8.5 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z\"></path></svg> Chat with seller</span> <svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"h-4 w-4 text-[#8A9285]\" aria-hidden=\"true\"><path d=\"M5 12h14M13 6l6 6-6 6\"></path></svg></button></div></section><div class=\"mt-12 h-0.5 w-full bg-[#E5E8DF]\"></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -652,7 +665,7 @@ func productDetail(user *db.User, productDetails db.GetProductDetailRow, images 
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<div class=\"mt-14 h-0.5 w-full bg-[#E5E8DF]\"></div><section class=\"mt-10\"><p class=\"text-xs font-bold uppercase tracking-[0.2em] text-[#6B7D60]\">Picked for you</p><h2 class=\"mt-2 text-[30px] font-extrabold tracking-tight text-[#20231F] sm:text-4xl\">You may also like</h2><div class=\"mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<div class=\"mt-14 h-0.5 w-full bg-[#E5E8DF]\"></div><section class=\"mt-10\"><p class=\"text-xs font-bold uppercase tracking-[0.2em] text-[#6B7D60]\">Picked for you</p><h2 class=\"mt-2 text-[30px] font-extrabold tracking-tight text-[#20231F] sm:text-4xl\">You may also like</h2><div class=\"mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -662,7 +675,7 @@ func productDetail(user *db.User, productDetails db.GetProductDetailRow, images 
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</div></section></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</div></section></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -686,38 +699,38 @@ func RatingSummary(productDetails db.GetProductDetailRow) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var29 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var29 == nil {
-			templ_7745c5c3_Var29 = templ.NopComponent
+		templ_7745c5c3_Var30 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var30 == nil {
+			templ_7745c5c3_Var30 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<div id=\"rating-summary\" class=\"mt-3 flex flex-wrap items-center gap-2 text-sm\"><svg viewBox=\"0 0 24 24\" class=\"h-4 w-4 text-[#B8892E]\" aria-hidden=\"true\"><path d=\"M12 2.5l2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.5l-5.88 3.11 1.12-6.55-4.76-4.64 6.58-.96z\" fill=\"currentColor\"></path></svg> <span class=\"font-semibold text-[#20231F]\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var30 string
-		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.FormatFloat(productDetails.Rating, 'f', 1, 64))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 453, Col: 101}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</span> <span class=\"text-[#8A9285]\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<div id=\"rating-summary\" class=\"mt-3 flex flex-wrap items-center gap-2 text-sm\"><svg viewBox=\"0 0 24 24\" class=\"h-4 w-4 text-[#B8892E]\" aria-hidden=\"true\"><path d=\"M12 2.5l2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.5l-5.88 3.11 1.12-6.55-4.76-4.64 6.58-.96z\" fill=\"currentColor\"></path></svg> <span class=\"font-semibold text-[#20231F]\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var31 string
-		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(reviewCountText(int(productDetails.ReviewCount)))
+		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.FormatFloat(productDetails.Rating, 'f', 1, 64))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 454, Col: 81}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 458, Col: 101}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</span></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</span> <span class=\"text-[#8A9285]\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var32 string
+		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(reviewCountText(int(productDetails.ReviewCount)))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 459, Col: 81}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "</span></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -741,25 +754,25 @@ func ReviewSection(user *db.User, productDetails db.GetProductDetailRow, product
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var32 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var32 == nil {
-			templ_7745c5c3_Var32 = templ.NopComponent
+		templ_7745c5c3_Var33 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var33 == nil {
+			templ_7745c5c3_Var33 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<section id=\"review-section\" class=\"mt-12 grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-14\"><div><p class=\"text-xs font-bold uppercase tracking-[0.2em] text-[#6B7D60]\">Kind words</p><h2 class=\"mt-2 text-[30px] font-extrabold tracking-tight text-[#20231F] sm:text-4xl\">Customer reviews</h2><div class=\"mt-5 flex items-start gap-4\"><span class=\"text-5xl font-extrabold leading-none tracking-tight text-[#20231F]\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<section id=\"review-section\" class=\"mt-12 grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-14\"><div><p class=\"text-xs font-bold uppercase tracking-[0.2em] text-[#6B7D60]\">Kind words</p><h2 class=\"mt-2 text-[30px] font-extrabold tracking-tight text-[#20231F] sm:text-4xl\">Customer reviews</h2><div class=\"mt-5 flex items-start gap-4\"><span class=\"text-5xl font-extrabold leading-none tracking-tight text-[#20231F]\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var33 string
-		templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.FormatFloat(productDetails.Rating, 'f', 1, 64))
+		var templ_7745c5c3_Var34 string
+		templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.FormatFloat(productDetails.Rating, 'f', 1, 64))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 466, Col: 141}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 471, Col: 141}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "</span><div class=\"pt-1\"><div class=\"flex items-center gap-1 text-[#B8892E]\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "</span><div class=\"pt-1\"><div class=\"flex items-center gap-1 text-[#B8892E]\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -769,113 +782,113 @@ func ReviewSection(user *db.User, productDetails db.GetProductDetailRow, product
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "</div><p class=\"mt-1 text-xs text-[#8A9285]\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</div><p class=\"mt-1 text-xs text-[#8A9285]\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var34 string
-		templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(reviewBasedOn(int(productDetails.ReviewCount)))
+		var templ_7745c5c3_Var35 string
+		templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(reviewBasedOn(int(productDetails.ReviewCount)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 473, Col: 92}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 478, Col: 92}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</p></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "</p></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if canReview {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "<form class=\"mt-6 rounded-2xl border border-[#E5E8DF] bg-white p-5 sm:p-6\" data-on:submit__prevent=\"$reviewSubmitting = true; @post('/addReview', {contentType: 'form'})\"><input type=\"hidden\" name=\"product_id\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<form class=\"mt-6 rounded-2xl border border-[#E5E8DF] bg-white p-5 sm:p-6\" data-on:submit__prevent=\"$reviewSubmitting = true; @post('/addReview', {contentType: 'form'})\"><input type=\"hidden\" name=\"product_id\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var35 string
-			templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(int(productDetails.ID)))
+			var templ_7745c5c3_Var36 string
+			templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(int(productDetails.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 481, Col: 88}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 486, Col: 88}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var35)
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var36)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "\"> <input type=\"hidden\" name=\"rating\" value=\"0\" data-attr:value=\"$reviewRating\"><p class=\"text-[10px] font-bold uppercase tracking-[0.2em] text-[#6B7D60]\">Share your experience</p><p class=\"mt-5 text-sm font-medium text-[#20231F]\">Your rating</p><div class=\"mt-2 flex items-center gap-1\" data-on:mouseleave=\"$reviewHover = 0\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "\"> <input type=\"hidden\" name=\"rating\" value=\"0\" data-attr:value=\"$reviewRating\"><p class=\"text-[10px] font-bold uppercase tracking-[0.2em] text-[#6B7D60]\">Share your experience</p><p class=\"mt-5 text-sm font-medium text-[#20231F]\">Your rating</p><div class=\"mt-2 flex items-center gap-1\" data-on:mouseleave=\"$reviewHover = 0\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			for i := 1; i <= 5; i++ {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<button type=\"button\" data-on:mouseenter=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var36 string
-				templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.ResolveAttributeValue("$reviewHover = " + strconv.Itoa(i))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 491, Col: 64}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var36)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "\" data-on:click=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "<button type=\"button\" data-on:mouseenter=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var37 string
-				templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.ResolveAttributeValue("$reviewRating = " + strconv.Itoa(i))
+				templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.ResolveAttributeValue("$reviewHover = " + strconv.Itoa(i))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 492, Col: 60}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 496, Col: 64}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var37)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "\" class=\"rounded-md p-0.5 text-[#B8892E] transition hover:scale-110\" aria-label=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "\" data-on:click=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var38 string
-				templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.ResolveAttributeValue("Rate " + strconv.Itoa(i) + " out of 5")
+				templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.ResolveAttributeValue("$reviewRating = " + strconv.Itoa(i))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 494, Col: 60}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 497, Col: 60}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var38)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "\"><svg viewBox=\"0 0 24 24\" class=\"h-7 w-7 text-[#B8892E]\" aria-hidden=\"true\"><path d=\"M12 2.5l2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.5l-5.88 3.11 1.12-6.55-4.76-4.64 6.58-.96z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linejoin=\"round\"></path> <path d=\"M12 2.5l2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.5l-5.88 3.11 1.12-6.55-4.76-4.64 6.58-.96z\" fill=\"currentColor\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linejoin=\"round\" style=\"display: none\" data-show=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "\" class=\"rounded-md p-0.5 text-[#B8892E] transition hover:scale-110\" aria-label=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var39 string
-				templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.ResolveAttributeValue(reviewStarFilledExpr(i))
+				templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.ResolveAttributeValue("Rate " + strconv.Itoa(i) + " out of 5")
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 511, Col: 45}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 499, Col: 60}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var39)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "\"></path></svg></button>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "\"><svg viewBox=\"0 0 24 24\" class=\"h-7 w-7 text-[#B8892E]\" aria-hidden=\"true\"><path d=\"M12 2.5l2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.5l-5.88 3.11 1.12-6.55-4.76-4.64 6.58-.96z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linejoin=\"round\"></path> <path d=\"M12 2.5l2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.5l-5.88 3.11 1.12-6.55-4.76-4.64 6.58-.96z\" fill=\"currentColor\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linejoin=\"round\" style=\"display: none\" data-show=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var40 string
+				templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.ResolveAttributeValue(reviewStarFilledExpr(i))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 516, Col: 45}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var40)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "\"></path></svg></button>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "</div><p class=\"mt-4 text-sm text-[#8A9285]\">Reviewing as <strong class=\"ml-1 font-semibold text-black\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "</div><p class=\"mt-4 text-sm text-[#8A9285]\">Reviewing as <strong class=\"ml-1 font-semibold text-black\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var40 string
-			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(user.Name)
+			var templ_7745c5c3_Var41 string
+			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(user.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 519, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 524, Col: 63}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "</strong></p><label for=\"review-text\" class=\"mt-5 block text-sm font-medium text-[#20231F]\">Your review</label> <textarea id=\"review-text\" name=\"review_text\" rows=\"4\" data-bind:review-text placeholder=\"Tell us what you liked...\" class=\"mt-2 w-full resize-none rounded-xl border border-[#DCE2D7] bg-[#FBFBF9] px-3.5 py-3 text-sm text-[#20231F] outline-none transition placeholder:text-[#A3AA9C] focus:border-[#283B28] focus:ring-2 focus:ring-[#283B28]/10\"></textarea>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "</strong></p><label for=\"review-text\" class=\"mt-5 block text-sm font-medium text-[#20231F]\">Your review</label> <textarea id=\"review-text\" name=\"review_text\" rows=\"4\" data-bind:review-text placeholder=\"Tell us what you liked...\" class=\"mt-2 w-full resize-none rounded-xl border border-[#DCE2D7] bg-[#FBFBF9] px-3.5 py-3 text-sm text-[#20231F] outline-none transition placeholder:text-[#A3AA9C] focus:border-[#283B28] focus:ring-2 focus:ring-[#283B28]/10\"></textarea>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -883,53 +896,53 @@ func ReviewSection(user *db.User, productDetails db.GetProductDetailRow, product
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<button type=\"submit\" data-attr:disabled=\"$reviewRating < 1 || $reviewSubmitting\" class=\"mt-4 inline-flex items-center gap-2 rounded-full bg-[#283B28] px-5 py-2.5 text-sm font-semibold text-[#F7F8F5] transition hover:bg-[#20261F] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#283B28]\">Submit review <svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"h-4 w-4\" aria-hidden=\"true\"><path d=\"M5 12h14M13 6l6 6-6 6\"></path></svg></button></form>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "<button type=\"submit\" data-attr:disabled=\"$reviewRating < 1 || $reviewSubmitting\" class=\"mt-4 inline-flex items-center gap-2 rounded-full bg-[#283B28] px-5 py-2.5 text-sm font-semibold text-[#F7F8F5] transition hover:bg-[#20261F] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#283B28]\">Submit review <svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"h-4 w-4\" aria-hidden=\"true\"><path d=\"M5 12h14M13 6l6 6-6 6\"></path></svg></button></form>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if user != nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "<div class=\"mt-6 rounded-2xl border border-[#E5E8DF] bg-white p-5 text-sm text-[#687064] sm:p-6\">You can review this product after your order has been delivered.</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<div class=\"mt-6 rounded-2xl border border-[#E5E8DF] bg-white p-5 text-sm text-[#687064] sm:p-6\">You can review this product after your order has been delivered.</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<div class=\"mt-6 rounded-2xl border border-[#E5E8DF] bg-white p-5 text-sm text-[#687064] sm:p-6\">Please <a href=\"/login\" class=\"font-semibold text-[#283B28] underline underline-offset-4\">log in</a> to write a review.</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "<div class=\"mt-6 rounded-2xl border border-[#E5E8DF] bg-white p-5 text-sm text-[#687064] sm:p-6\">Please <a href=\"/login\" class=\"font-semibold text-[#283B28] underline underline-offset-4\">log in</a> to write a review.</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "</div><div class=\"flex min-h-0 flex-col lg:relative lg:h-full\"><div class=\"flex h-12 shrink-0 items-center justify-between gap-4 border-b-2 border-[#E5E8DF]\"><h3 class=\"text-sm font-semibold text-[#3F4A3B]\">What customers are saying</h3><span class=\"text-sm font-normal text-[#687064]\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "</div><div class=\"flex min-h-0 flex-col lg:relative lg:h-full\"><div class=\"flex h-12 shrink-0 items-center justify-between gap-4 border-b-2 border-[#E5E8DF]\"><h3 class=\"text-sm font-semibold text-[#3F4A3B]\">What customers are saying</h3><span class=\"text-sm font-normal text-[#687064]\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var41 string
-		templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(reviewCountText(len(productReviews)))
+		var templ_7745c5c3_Var42 string
+		templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(reviewCountText(len(productReviews)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 564, Col: 91}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 569, Col: 91}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "</span></div><div class=\"mt-4 max-h-[32rem] overflow-y-auto pr-1 lg:absolute lg:inset-x-0 lg:bottom-0 lg:top-14 lg:mt-0 lg:max-h-none lg:pr-2\"><div class=\"divide-y-2 divide-[#E5E8DF]\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "</span></div><div class=\"mt-4 max-h-[32rem] overflow-y-auto pr-1 lg:absolute lg:inset-x-0 lg:bottom-0 lg:top-14 lg:mt-0 lg:max-h-none lg:pr-2\"><div class=\"divide-y-2 divide-[#E5E8DF]\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		for _, review := range productReviews {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "<article id=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "<article id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var42 string
-			templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.ResolveAttributeValue(review.ID)
+			var templ_7745c5c3_Var43 string
+			templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.ResolveAttributeValue(review.ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 569, Col: 29}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 574, Col: 29}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var42)
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var43)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "\" class=\"py-5\"><div class=\"flex items-center justify-between gap-4\"><div class=\"flex items-center gap-1 text-[#B8892E]\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "\" class=\"py-5\"><div class=\"flex items-center justify-between gap-4\"><div class=\"flex items-center gap-1 text-[#B8892E]\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -939,61 +952,61 @@ func ReviewSection(user *db.User, productDetails db.GetProductDetailRow, product
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "</div><span class=\"text-xs text-[#8A9285]\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "</div><span class=\"text-xs text-[#8A9285]\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var43 string
-			templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(formatDate(review.CreatedAt))
+			var templ_7745c5c3_Var44 string
+			templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(formatDate(review.CreatedAt))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 576, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 581, Col: 75}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "</span></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "</span></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if review.ReviewText != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "<p class=\"mt-3 text-sm leading-relaxed text-[#4A5443]\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "<p class=\"mt-3 text-sm leading-relaxed text-[#4A5443]\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var44 string
-				templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(review.ReviewText)
+				var templ_7745c5c3_Var45 string
+				templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(review.ReviewText)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 579, Col: 82}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 584, Col: 82}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "<p class=\"mt-3 text-sm font-semibold text-[#20231F]\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "<p class=\"mt-3 text-sm font-semibold text-[#20231F]\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var45 string
-			templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(review.CustomerName)
+			var templ_7745c5c3_Var46 string
+			templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(review.CustomerName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 581, Col: 81}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 586, Col: 81}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "</p></article>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "</p></article>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "</div></div></div></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "</div></div></div></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1017,35 +1030,35 @@ func reviewStar(fill float64) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var46 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var46 == nil {
-			templ_7745c5c3_Var46 = templ.NopComponent
+		templ_7745c5c3_Var47 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var47 == nil {
+			templ_7745c5c3_Var47 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "<span class=\"relative inline-block h-4 w-4 text-[#B8892E]\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\" class=\"h-4 w-4\"><path d=\"M12 2.5l2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.5l-5.88 3.11 1.12-6.55-4.76-4.64 6.58-.96z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linejoin=\"round\"></path></svg> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "<span class=\"relative inline-block h-4 w-4 text-[#B8892E]\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\" class=\"h-4 w-4\"><path d=\"M12 2.5l2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.5l-5.88 3.11 1.12-6.55-4.76-4.64 6.58-.96z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linejoin=\"round\"></path></svg> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if fill > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "<span class=\"absolute inset-y-0 left-0 overflow-hidden\" style=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "<span class=\"absolute inset-y-0 left-0 overflow-hidden\" style=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var47 string
-			templ_7745c5c3_Var47, templ_7745c5c3_Err = templruntime.SanitizeStyleAttributeValues("width: " + strconv.FormatFloat(fill*100, 'f', 1, 64) + "%")
+			var templ_7745c5c3_Var48 string
+			templ_7745c5c3_Var48, templ_7745c5c3_Err = templruntime.SanitizeStyleAttributeValues("width: " + strconv.FormatFloat(fill*100, 'f', 1, 64) + "%")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 604, Col: 71}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/productDetail.templ`, Line: 609, Col: 71}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "\"><svg viewBox=\"0 0 24 24\" class=\"h-4 w-4 max-w-none\"><path d=\"M12 2.5l2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.5l-5.88 3.11 1.12-6.55-4.76-4.64 6.58-.96z\" fill=\"currentColor\"></path></svg></span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "\"><svg viewBox=\"0 0 24 24\" class=\"h-4 w-4 max-w-none\"><path d=\"M12 2.5l2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.5l-5.88 3.11 1.12-6.55-4.76-4.64 6.58-.96z\" fill=\"currentColor\"></path></svg></span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1069,12 +1082,12 @@ func ProductDetailRenderer(user *db.User, productDetails db.GetProductDetailRow,
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var48 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var48 == nil {
-			templ_7745c5c3_Var48 = templ.NopComponent
+		templ_7745c5c3_Var49 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var49 == nil {
+			templ_7745c5c3_Var49 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Var49 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var50 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -1092,7 +1105,7 @@ func ProductDetailRenderer(user *db.User, productDetails db.GetProductDetailRow,
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = Html(productDetails.Name+" | Eve Collection", user, "home").Render(templ.WithChildren(ctx, templ_7745c5c3_Var49), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Html(productDetails.Name+" | Eve Collection", user, "home").Render(templ.WithChildren(ctx, templ_7745c5c3_Var50), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

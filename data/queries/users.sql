@@ -228,7 +228,7 @@ SELECT
             JOIN product_variants pv ON pv.id = oi.variant_id
             JOIN orders o ON o.id = oi.order_id
             WHERE pv.product_id = p.id
-              AND o.status = 'delivered'
+              AND o.status <> 'cancelled'
         ),
         0
     )::int AS sold,
@@ -275,7 +275,7 @@ WITH cards AS (
         COALESCE((SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.sort_order ASC LIMIT 1), '') AS cover_image,
         COALESCE((SELECT AVG(pr.rating) FROM product_reviews pr WHERE pr.product_id = p.id), 0)::float8 AS rating,
         (SELECT COUNT(*) FROM product_reviews pr WHERE pr.product_id = p.id)::int AS review_count,
-        COALESCE((SELECT SUM(oi.quantity) FROM order_items oi JOIN product_variants pv ON pv.id = oi.variant_id JOIN orders o ON o.id = oi.order_id WHERE pv.product_id = p.id AND o.status = 'delivered'), 0)::int AS sold,
+        COALESCE((SELECT SUM(oi.quantity) FROM order_items oi JOIN product_variants pv ON pv.id = oi.variant_id JOIN orders o ON o.id = oi.order_id WHERE pv.product_id = p.id AND o.status <> 'cancelled'), 0)::int AS sold,
         COALESCE((SELECT SUM(pv.stock) FROM product_variants pv WHERE pv.product_id = p.id), 0)::int AS stock,
         LOWER(
             p.name || ' ' || c.name || ' ' ||
@@ -309,9 +309,9 @@ DO UPDATE SET views = product_stats.views + 1;
 
 -- name: RecordProductCart :exec
 INSERT INTO product_stats (product_id, day, carts)
-VALUES ($1, CURRENT_DATE, 1)
+VALUES (sqlc.arg('product_id'), CURRENT_DATE, sqlc.arg('quantity'))
 ON CONFLICT (product_id, day)
-DO UPDATE SET carts = product_stats.carts + 1;
+DO UPDATE SET carts = product_stats.carts + sqlc.arg('quantity');
 
 -- name: RecordProductPurchase :exec
 INSERT INTO product_stats (product_id, day, purchases)
@@ -427,3 +427,153 @@ ORDER BY ci.added_at DESC;
 -- name: RemoveCartItem :exec
 DELETE FROM cart_items
 WHERE customer_id = $1 AND variant_id = $2;
+
+
+-- name: GetProductByVariantID :one
+SELECT
+    p.id AS product_id,
+    p.name AS product_name,
+    pv.id AS variant_id,
+    COALESCE(pv.size, '') AS size,
+    COALESCE(pv.color, '') AS color,
+    sqlc.arg('quantity')::int AS quantity,
+    COALESCE(pv.price_override, p.base_price)::float8 AS price,
+    COALESCE((
+        SELECT pi.image_url
+        FROM product_images pi
+        WHERE pi.product_id = p.id
+        ORDER BY pi.sort_order ASC, pi.id ASC
+        LIMIT 1
+    ), '')::text AS image_url
+FROM product_variants pv
+JOIN products p ON p.id = pv.product_id
+WHERE pv.id = sqlc.arg('variant_id')::int;
+
+-- name: GetVariantPrice :one
+SELECT COALESCE(pv.price_override, p.base_price)::float8 AS price
+FROM product_variants pv
+JOIN products p ON p.id = pv.product_id
+WHERE pv.id = $1;
+
+-- name: CreateOrder :one
+INSERT INTO orders (
+    customer_id,
+    status,
+    payment_method,
+    total_amount,
+    delivery_address,
+    delivery_district,
+    delivery_phone
+) VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id;
+
+-- name: CreateOrderItem :exec
+INSERT INTO order_items (order_id, variant_id, quantity, unit_price)
+VALUES ($1, $2, $3, $4);
+
+-- name: GetVariantForOrder :one
+SELECT COALESCE(pv.price_override, p.base_price)::float8 AS price, pv.stock, pv.product_id
+FROM product_variants pv
+JOIN products p ON p.id = pv.product_id
+WHERE pv.id = $1
+  AND p.is_active = TRUE;
+
+-- name: DecreaseVariantStock :execrows
+UPDATE product_variants
+SET stock = stock - $2
+WHERE id = $1 AND stock >= $2;
+
+-- name: IncreaseVariantStock :exec
+UPDATE product_variants
+SET stock = stock + $2
+WHERE id = $1;
+
+-- name: DeleteOrder :exec
+DELETE FROM orders WHERE id = $1;
+
+-- name: GetOrderByCustomer :one
+SELECT id, status, payment_method, payment_status, total_amount::float8 AS total_amount
+FROM orders
+WHERE id = $1 AND customer_id = $2;
+
+-- name: SubtractOrderedCartQuantity :execrows
+UPDATE cart_items
+SET quantity = quantity - $3
+WHERE customer_id = $1 AND variant_id = $2 AND quantity > $3;
+
+-- name: ListOrders :many
+SELECT
+    o.id,
+    o.customer_id,
+    o.status,
+    o.payment_method,
+    o.payment_status,
+    o.total_amount::float8 AS total_amount,
+    o.delivery_address,
+    o.delivery_district,
+    o.delivery_phone,
+    o.created_at,
+    o.updated_at,
+    u.name AS customer_name,
+    u.phone AS customer_phone,
+    COALESCE(SUM(oi.quantity), 0)::int AS total_quantity
+FROM orders o
+JOIN users u ON u.id = o.customer_id
+LEFT JOIN order_items oi ON oi.order_id = o.id
+WHERE (sqlc.arg('customer_id')::int = 0 OR o.customer_id = sqlc.arg('customer_id')::int)
+GROUP BY o.id, u.name, u.phone
+ORDER BY o.created_at DESC, o.id DESC;
+
+-- name: ListOrderItems :many
+SELECT
+    oi.order_id,
+    oi.quantity,
+    oi.unit_price::float8 AS unit_price,
+    p.id AS product_id,
+    p.name AS product_name,
+    COALESCE(pv.size, '') AS size,
+    COALESCE(pv.color, '') AS color,
+    COALESCE((
+        SELECT pi.image_url
+        FROM product_images pi
+        WHERE pi.product_id = p.id
+        ORDER BY pi.sort_order ASC, pi.id ASC
+        LIMIT 1
+    ), '')::text AS cover_image
+FROM order_items oi
+JOIN product_variants pv ON pv.id = oi.variant_id
+JOIN products p ON p.id = pv.product_id
+WHERE oi.order_id = ANY(sqlc.arg('order_ids')::int[])
+ORDER BY oi.order_id, oi.id;
+
+-- name: GetOrder :one
+SELECT
+    o.id,
+    o.customer_id,
+    o.status,
+    o.payment_method,
+    o.payment_status,
+    o.total_amount::float8 AS total_amount,
+    o.delivery_address,
+    o.delivery_district,
+    o.delivery_phone,
+    o.created_at,
+    o.updated_at,
+    u.name AS customer_name,
+    u.phone AS customer_phone,
+    COALESCE(SUM(oi.quantity), 0)::int AS total_quantity
+FROM orders o
+JOIN users u ON u.id = o.customer_id
+LEFT JOIN order_items oi ON oi.order_id = o.id
+WHERE o.id = $1
+GROUP BY o.id, u.name, u.phone;
+
+-- name: UpdateOrderStatus :execrows
+UPDATE orders
+SET status = $2, updated_at = NOW()
+WHERE id = $1;
+
+-- name: UpdateOrderPaymentStatus :execrows
+UPDATE orders
+SET payment_status = $2, updated_at = NOW()
+WHERE id = $1;

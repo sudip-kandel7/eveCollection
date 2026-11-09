@@ -92,9 +92,9 @@ CREATE TABLE orders (
     id                SERIAL PRIMARY KEY,
     customer_id       INTEGER NOT NULL REFERENCES users(id),
     status            VARCHAR(30) NOT NULL DEFAULT 'placed',
-        -- 'placed', 'payment_confirmed', 'packed', 'out_for_delivery', 'delivered', 'payment_failed'
+        -- 'placed', 'packed', 'out_for_delivery', 'delivered', 'cancelled'
     payment_method    VARCHAR(20) NOT NULL,   -- 'cod', 'online'
-    payment_status    VARCHAR(20) NOT NULL DEFAULT 'pending', -- 'pending','paid','failed'
+    payment_status    VARCHAR(20) NOT NULL DEFAULT 'pending', -- 'pending','paid'
     total_amount      NUMERIC(10,2) NOT NULL,
     delivery_address  TEXT NOT NULL,
     delivery_district VARCHAR(100) NOT NULL,
