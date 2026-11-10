@@ -463,8 +463,11 @@ INSERT INTO orders (
     total_amount,
     delivery_address,
     delivery_district,
-    delivery_phone
-) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    delivery_phone,
+    transaction_uuid,
+    transaction_code,
+    from_cart
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING id;
 
 -- name: CreateOrderItem :exec
@@ -501,79 +504,27 @@ UPDATE cart_items
 SET quantity = quantity - $3
 WHERE customer_id = $1 AND variant_id = $2 AND quantity > $3;
 
--- name: ListOrders :many
-SELECT
-    o.id,
-    o.customer_id,
-    o.status,
-    o.payment_method,
-    o.payment_status,
-    o.total_amount::float8 AS total_amount,
-    o.delivery_address,
-    o.delivery_district,
-    o.delivery_phone,
-    o.created_at,
-    o.updated_at,
-    u.name AS customer_name,
-    u.phone AS customer_phone,
-    COALESCE(SUM(oi.quantity), 0)::int AS total_quantity
-FROM orders o
-JOIN users u ON u.id = o.customer_id
-LEFT JOIN order_items oi ON oi.order_id = o.id
-WHERE (sqlc.arg('customer_id')::int = 0 OR o.customer_id = sqlc.arg('customer_id')::int)
-GROUP BY o.id, u.name, u.phone
-ORDER BY o.created_at DESC, o.id DESC;
 
--- name: ListOrderItems :many
-SELECT
-    oi.order_id,
-    oi.quantity,
-    oi.unit_price::float8 AS unit_price,
-    p.id AS product_id,
-    p.name AS product_name,
-    COALESCE(pv.size, '') AS size,
-    COALESCE(pv.color, '') AS color,
-    COALESCE((
-        SELECT pi.image_url
-        FROM product_images pi
-        WHERE pi.product_id = p.id
-        ORDER BY pi.sort_order ASC, pi.id ASC
-        LIMIT 1
-    ), '')::text AS cover_image
+-- name: GetOrderForPayment :one
+SELECT id, customer_id, status, total_amount, delivery_district, transaction_uuid
+FROM orders
+WHERE id = $1;
+
+-- name: GetOrderByTransactionUUID :one
+SELECT id, customer_id, status, total_amount, delivery_district, from_cart, transaction_uuid, transaction_code
+FROM orders
+WHERE transaction_uuid = $1;
+
+-- name: GetOrderItemsForPayment :many
+SELECT oi.variant_id, oi.quantity, oi.unit_price::float8 AS unit_price, pv.product_id
 FROM order_items oi
 JOIN product_variants pv ON pv.id = oi.variant_id
-JOIN products p ON p.id = pv.product_id
-WHERE oi.order_id = ANY(sqlc.arg('order_ids')::int[])
-ORDER BY oi.order_id, oi.id;
+WHERE oi.order_id = $1;
 
--- name: GetOrder :one
-SELECT
-    o.id,
-    o.customer_id,
-    o.status,
-    o.payment_method,
-    o.payment_status,
-    o.total_amount::float8 AS total_amount,
-    o.delivery_address,
-    o.delivery_district,
-    o.delivery_phone,
-    o.created_at,
-    o.updated_at,
-    u.name AS customer_name,
-    u.phone AS customer_phone,
-    COALESCE(SUM(oi.quantity), 0)::int AS total_quantity
-FROM orders o
-JOIN users u ON u.id = o.customer_id
-LEFT JOIN order_items oi ON oi.order_id = o.id
-WHERE o.id = $1
-GROUP BY o.id, u.name, u.phone;
-
--- name: UpdateOrderStatus :execrows
+-- name: MarkOrderPaid :exec
 UPDATE orders
-SET status = $2, updated_at = NOW()
+SET status = 'placed', payment_status = 'paid', updated_at = NOW()
 WHERE id = $1;
 
--- name: UpdateOrderPaymentStatus :execrows
-UPDATE orders
-SET payment_status = $2, updated_at = NOW()
-WHERE id = $1;
+-- name: DeleteOrderItems :exec
+DELETE FROM order_items WHERE order_id = $1;

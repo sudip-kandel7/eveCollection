@@ -56,6 +56,9 @@ type Order struct {
 	DeliveredConfirmedBy pgtype.Text
 	CreatedAt            pgtype.Timestamp
 	UpdatedAt            pgtype.Timestamp
+	TransactionUuid      pgtype.Text
+	TransactionCode      pgtype.Text
+	FromCart             bool
 }
 
 type OrderItem struct {

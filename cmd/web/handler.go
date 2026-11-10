@@ -6,15 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/disintegration/imaging"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/starfederation/datastar-go/datastar"
-	"github.com/sudip-kandel7/eveCollection/internal/algorithms"
-	"github.com/sudip-kandel7/eveCollection/internal/db"
-	"github.com/sudip-kandel7/eveCollection/internal/validator"
-	"github.com/sudip-kandel7/eveCollection/views"
-	"github.com/sudip-kandel7/eveCollection/views/components"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -23,6 +14,17 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/disintegration/imaging"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/starfederation/datastar-go/datastar"
+	"github.com/sudip-kandel7/eveCollection/internal/algorithms"
+	"github.com/sudip-kandel7/eveCollection/internal/db"
+	"github.com/sudip-kandel7/eveCollection/internal/validator"
+	"github.com/sudip-kandel7/eveCollection/views"
+	"github.com/sudip-kandel7/eveCollection/views/components"
 )
 
 type SignupForm struct {
@@ -99,6 +101,7 @@ const (
 	maxVariants      = 50
 	maxReviewText    = 1000
 	relatedLimit     = 4
+	taxAmount        = "0"
 )
 
 type reviewForm struct {
@@ -441,11 +444,18 @@ func (app *Application) AddToCart(w http.ResponseWriter, r *http.Request) {
 		message = fmt.Sprintf("Cart is at max available (%d)", row.Stock)
 	}
 
+	cartItems, err := app.getCartItems(r, user.ID)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
 	signals, err := json.Marshal(map[string]any{
 		"quantity":       1,
 		"cartSubmitting": false,
 		"cartMessage":    message,
 		"cartError":      false,
+		"cartCount":      cartQuantityCount(cartItems),
 	})
 	if err != nil {
 		app.serverError(w, r, err)
@@ -498,32 +508,14 @@ func (app *Application) getCartItems(r *http.Request, userID int32) ([]db.GetCar
 	return app.queries.GetCartItems(r.Context(), userID)
 }
 
+func cartQuantityCount(items []db.GetCartItemsRow) int {
+	return len(items)
+}
+
 func (app *Application) Profile(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r)
 
-	cartItems, err := app.getCartItems(r, user.ID)
-	if err != nil {
-		app.serverError(w, r, err)
-		return
-	}
-
-	tab := r.URL.Query().Get("tab")
-	switch tab {
-	case "profile", "cart", "orders", "messages", "reviews":
-	default:
-		tab = "profile"
-	}
-
-	var orders []views.OrderView
-	if tab == "orders" {
-		orders, err = app.loadOrderViews(r, user.ID)
-		if err != nil {
-			app.serverError(w, r, err)
-			return
-		}
-	}
-
-	views.ProfileRenderer(user, tab, cartItems, orders).Render(r.Context(), w)
+	views.ProfileRenderer(user, "profile").Render(r.Context(), w)
 }
 
 func (app *Application) About(w http.ResponseWriter, r *http.Request) {
@@ -532,7 +524,9 @@ func (app *Application) About(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *Application) Orders(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/profile?tab=orders", http.StatusSeeOther)
+	user := app.contextGetUser(r)
+
+	views.ProfileRenderer(user, "orders").Render(r.Context(), w)
 }
 
 func (app *Application) OrderSuccess(w http.ResponseWriter, r *http.Request) {
@@ -560,187 +554,6 @@ func (app *Application) OrderSuccess(w http.ResponseWriter, r *http.Request) {
 	views.OrderSuccessRenderer(user, order).Render(r.Context(), w)
 }
 
-func validOrderStatus(status string) bool {
-	switch status {
-	case "placed", "packed", "out_for_delivery", "delivered":
-		return true
-	}
-	return false
-}
-
-func orderViewFromOrder(order db.GetOrderRow, items []db.ListOrderItemsRow) views.OrderView {
-	return views.OrderView{
-		ID:               order.ID,
-		CustomerName:     order.CustomerName,
-		CustomerPhone:    order.CustomerPhone,
-		Status:           order.Status,
-		PaymentMethod:    order.PaymentMethod,
-		PaymentStatus:    order.PaymentStatus,
-		TotalAmount:      order.TotalAmount,
-		TotalQuantity:    order.TotalQuantity,
-		DeliveryAddress:  order.DeliveryAddress,
-		DeliveryDistrict: order.DeliveryDistrict,
-		DeliveryPhone:    order.DeliveryPhone,
-		CreatedAt:        order.CreatedAt,
-		Items:            items,
-	}
-}
-
-func (app *Application) loadOrderDetail(w http.ResponseWriter, r *http.Request) (db.GetOrderRow, []db.ListOrderItemsRow, bool) {
-	orderID, err := strconv.Atoi(r.PathValue("id"))
-	if err != nil || orderID <= 0 {
-		app.clientError(w, http.StatusNotFound)
-		return db.GetOrderRow{}, nil, false
-	}
-
-	order, err := app.queries.GetOrder(r.Context(), int32(orderID))
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			app.clientError(w, http.StatusNotFound)
-			return db.GetOrderRow{}, nil, false
-		}
-		app.serverError(w, r, err)
-		return db.GetOrderRow{}, nil, false
-	}
-
-	items, err := app.queries.ListOrderItems(r.Context(), []int32{int32(orderID)})
-	if err != nil {
-		app.serverError(w, r, err)
-		return db.GetOrderRow{}, nil, false
-	}
-
-	return order, items, true
-}
-
-func (app *Application) UpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
-	var form struct {
-		Status string `form:"status"`
-	}
-	if err := app.decodePostForm(r, &form); err != nil {
-		app.clientError(w, http.StatusBadRequest)
-		return
-	}
-
-	orderID, err := strconv.Atoi(r.PathValue("id"))
-	if err != nil || orderID <= 0 {
-		app.clientError(w, http.StatusNotFound)
-		return
-	}
-
-	if !validOrderStatus(form.Status) {
-		app.clientError(w, http.StatusBadRequest)
-		return
-	}
-
-	affected, err := app.queries.UpdateOrderStatus(r.Context(), db.UpdateOrderStatusParams{
-		ID:     int32(orderID),
-		Status: form.Status,
-	})
-	if err != nil {
-		app.serverError(w, r, err)
-		return
-	}
-	if affected == 0 {
-		app.clientError(w, http.StatusNotFound)
-		return
-	}
-
-	orders, err := app.loadOrderViews(r, 0)
-	if err != nil {
-		app.serverError(w, r, err)
-		return
-	}
-
-	sse := datastar.NewSSE(w, r)
-	sse.PatchElementTempl(views.OrdersAdminContent(orders), datastar.WithSelectorID("orders-admin"))
-}
-
-func (app *Application) UpdateOrderPaymentStatus(w http.ResponseWriter, r *http.Request) {
-	var form struct {
-		PaymentStatus string `form:"payment_status"`
-	}
-	if err := app.decodePostForm(r, &form); err != nil {
-		app.clientError(w, http.StatusBadRequest)
-		return
-	}
-
-	orderID, err := strconv.Atoi(r.PathValue("id"))
-	if err != nil || orderID <= 0 {
-		app.clientError(w, http.StatusNotFound)
-		return
-	}
-
-	if form.PaymentStatus != "pending" && form.PaymentStatus != "paid" {
-		app.clientError(w, http.StatusBadRequest)
-		return
-	}
-
-	order, err := app.queries.GetOrder(r.Context(), int32(orderID))
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			app.clientError(w, http.StatusNotFound)
-			return
-		}
-		app.serverError(w, r, err)
-		return
-	}
-	if order.PaymentMethod != "cod" {
-		app.clientError(w, http.StatusBadRequest)
-		return
-	}
-
-	affected, err := app.queries.UpdateOrderPaymentStatus(r.Context(), db.UpdateOrderPaymentStatusParams{
-		ID:            int32(orderID),
-		PaymentStatus: form.PaymentStatus,
-	})
-	if err != nil {
-		app.serverError(w, r, err)
-		return
-	}
-	if affected == 0 {
-		app.clientError(w, http.StatusNotFound)
-		return
-	}
-
-	orders, err := app.loadOrderViews(r, 0)
-	if err != nil {
-		app.serverError(w, r, err)
-		return
-	}
-
-	sse := datastar.NewSSE(w, r)
-	sse.PatchElementTempl(views.OrdersAdminContent(orders), datastar.WithSelectorID("orders-admin"))
-}
-
-func (app *Application) AdminOrderDetail(w http.ResponseWriter, r *http.Request) {
-	order, items, ok := app.loadOrderDetail(w, r)
-	if !ok {
-		return
-	}
-
-	sse := datastar.NewSSE(w, r)
-	sse.PatchElementTempl(views.OrderDetailModal(orderViewFromOrder(order, items), true), datastar.WithSelectorID("order-detail-modal"), datastar.WithModeInner())
-	sse.PatchSignals([]byte(`{"orderModalOpen": true}`))
-}
-
-func (app *Application) CustomerOrderDetail(w http.ResponseWriter, r *http.Request) {
-	user := app.contextGetUser(r)
-
-	order, items, ok := app.loadOrderDetail(w, r)
-	if !ok {
-		return
-	}
-
-	if order.CustomerID != user.ID {
-		app.clientError(w, http.StatusNotFound)
-		return
-	}
-
-	sse := datastar.NewSSE(w, r)
-	sse.PatchElementTempl(views.OrderDetailModal(orderViewFromOrder(order, items), false), datastar.WithSelectorID("order-detail-modal"), datastar.WithModeInner())
-	sse.PatchSignals([]byte(`{"orderModalOpen": true}`))
-}
-
 func (app *Application) Cart(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r)
 
@@ -750,10 +563,27 @@ func (app *Application) Cart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = views.ProfileRenderer(user, "cart", cartItems, nil).Render(r.Context(), w)
+	err = views.CartRenderer(user, cartItems).Render(r.Context(), w)
 	if err != nil {
 		app.serverError(w, r, err)
 	}
+}
+
+func (app *Application) CartCount(w http.ResponseWriter, r *http.Request) {
+	user := app.contextGetUser(r)
+
+	count := 0
+	if user != nil {
+		cartItems, err := app.getCartItems(r, user.ID)
+		if err != nil {
+			app.serverError(w, r, err)
+			return
+		}
+		count = cartQuantityCount(cartItems)
+	}
+
+	sse := datastar.NewSSE(w, r)
+	sse.PatchSignals([]byte(fmt.Sprintf(`{"cartCount":%d}`, count)))
 }
 
 func (app *Application) Checkout(w http.ResponseWriter, r *http.Request) {
@@ -966,10 +796,11 @@ func (app *Application) PlaceOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	total := 0.0
+	deliveryCharge := 0.0
 	if form.District == "Kathmandu" {
-		total = 150
+		deliveryCharge = 150.0
 	} else {
-		total = 250
+		deliveryCharge = 250.0
 	}
 
 	items := make([]orderItem, 0, len(intent.Items))
@@ -998,13 +829,22 @@ func (app *Application) PlaceOrder(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	total += deliveryCharge
+
 	totalNumeric, err := numericFromFloat(total)
 	if err != nil {
 		app.serverError(w, r, err)
 		return
 	}
 
-	orderInfo := db.CreateOrderParams{
+	var orderInfo db.CreateOrderParams
+	var from_cart bool = false
+
+	if intent.Source == "cart" {
+		from_cart = true
+	}
+
+	orderInfo = db.CreateOrderParams{
 		CustomerID:       user.ID,
 		Status:           "placed",
 		PaymentMethod:    form.Payment,
@@ -1012,11 +852,25 @@ func (app *Application) PlaceOrder(w http.ResponseWriter, r *http.Request) {
 		DeliveryAddress:  form.Address,
 		DeliveryDistrict: form.District,
 		DeliveryPhone:    form.Phone,
+		FromCart:         from_cart,
 	}
 
+	transaction_uuid := ""
+
 	if form.Payment == "esewa" {
-		app.patchCheckoutError(w, r, "eSewa payment is not available yet. Please choose cash on delivery.")
-		return
+		transaction_uuid = uuid.New().String()
+
+		orderInfo.TransactionUuid = pgtype.Text{
+			String: transaction_uuid,
+			Valid:  true,
+		}
+
+		orderInfo.TransactionCode = pgtype.Text{
+			String: app.esewaProductCode,
+			Valid:  true,
+		}
+
+		orderInfo.Status = "pending"
 	}
 
 	orderId, err := app.queries.CreateOrder(r.Context(), orderInfo)
@@ -1026,9 +880,7 @@ func (app *Application) PlaceOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cleanupOrder := func() {
-		if err := app.queries.DeleteOrder(r.Context(), orderId); err != nil {
-			app.logger.Error("failed to clean up order", "order_id", orderId, "error", err)
-		}
+		app.deleteOrder(r, orderId)
 	}
 
 	for _, item := range items {
@@ -1053,6 +905,24 @@ func (app *Application) PlaceOrder(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if form.Payment == "cod" {
+		ok, message := app.afterPlace(r, intent, items, int32(user.ID), cleanupOrder)
+		if !ok {
+			app.patchCheckoutError(w, r, message)
+			return
+		}
+
+		sse := datastar.NewSSE(w, r)
+		if err := sse.Redirect(fmt.Sprintf("/orders/%d/success", orderId)); err != nil {
+			app.serverError(w, r, err)
+		}
+	} else if form.Payment == "esewa" {
+		sse := datastar.NewSSE(w, r)
+		_ = sse.Redirect(fmt.Sprintf("/orders/%d/pay", orderId))
+	}
+}
+
+func (app *Application) afterPlace(r *http.Request, intent checkoutIntent, items []orderItem, userId int32, cleanupOrder func()) (bool, string) {
 	decremented := make([]orderItem, 0, len(items))
 	for _, item := range items {
 		affected, err := app.queries.DecreaseVariantStock(r.Context(), db.DecreaseVariantStockParams{
@@ -1070,8 +940,7 @@ func (app *Application) PlaceOrder(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				app.logger.Error("failed to decrease stock", "variant_id", item.VariantID, "error", err)
 			}
-			app.patchCheckoutError(w, r, "One of your items just went out of stock. Please try again.")
-			return
+			return false, "One of your items just went out of stock. Please try again."
 		}
 		decremented = append(decremented, item)
 	}
@@ -1079,7 +948,7 @@ func (app *Application) PlaceOrder(w http.ResponseWriter, r *http.Request) {
 	if intent.Source == "cart" {
 		for _, item := range items {
 			affected, err := app.queries.SubtractOrderedCartQuantity(r.Context(), db.SubtractOrderedCartQuantityParams{
-				CustomerID: user.ID,
+				CustomerID: userId,
 				VariantID:  item.VariantID,
 				Quantity:   item.Quantity,
 			})
@@ -1089,7 +958,7 @@ func (app *Application) PlaceOrder(w http.ResponseWriter, r *http.Request) {
 			}
 			if affected == 0 {
 				if err := app.queries.RemoveCartItem(r.Context(), db.RemoveCartItemParams{
-					CustomerID: user.ID,
+					CustomerID: userId,
 					VariantID:  item.VariantID,
 				}); err != nil {
 					app.logger.Error("failed to remove cart item", "variant_id", item.VariantID, "error", err)
@@ -1109,8 +978,77 @@ func (app *Application) PlaceOrder(w http.ResponseWriter, r *http.Request) {
 
 	app.sessionManager.Remove(r.Context(), "checkout")
 
-	sse := datastar.NewSSE(w, r)
-	if err := sse.Redirect(fmt.Sprintf("/orders/%d/success", orderId)); err != nil {
+	return true, ""
+}
+
+func (app *Application) deleteOrder(r *http.Request, orderID int32) {
+	if err := app.queries.DeleteOrderItems(r.Context(), orderID); err != nil {
+		app.logger.Error("failed to delete order items", "order_id", orderID, "error", err)
+	}
+	if err := app.queries.DeleteOrder(r.Context(), orderID); err != nil {
+		app.logger.Error("failed to delete order", "order_id", orderID, "error", err)
+	}
+}
+
+func (app *Application) OrderPay(w http.ResponseWriter, r *http.Request) {
+	user := app.contextGetUser(r)
+	if user == nil {
+		app.clientError(w, http.StatusForbidden)
+		return
+	}
+
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		app.clientError(w, http.StatusNotFound)
+		return
+	}
+
+	order, err := app.queries.GetOrderForPayment(r.Context(), int32(id))
+	if err != nil {
+		app.clientError(w, http.StatusNotFound)
+		return
+	}
+
+	if order.CustomerID != user.ID || order.Status != "pending" || !order.TransactionUuid.Valid {
+		app.clientError(w, http.StatusNotFound)
+		return
+	}
+
+	deliveryCharge := 250.0
+	if order.DeliveryDistrict == "Kathmandu" {
+		deliveryCharge = 150.0
+	}
+
+	total, err := numericToFloat(order.TotalAmount)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+	totalStr := strconv.FormatFloat(total, 'f', 2, 64)
+	subtotalStr := strconv.FormatFloat(total-deliveryCharge, 'f', 2, 64)
+	deliveryStr := strconv.FormatFloat(deliveryCharge, 'f', 2, 64)
+
+	uuid := order.TransactionUuid.String
+	message := fmt.Sprintf("total_amount=%s,transaction_uuid=%s,product_code=%s", totalStr, uuid, app.esewaProductCode)
+	signature := generateSignature(message, app.esewaSecretKey)
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	_ = components.Esewa(subtotalStr, "0", totalStr, uuid, app.esewaProductCode, signature, "0", deliveryStr).Render(r.Context(), w)
+}
+
+func (app *Application) EsewaSuccess(w http.ResponseWriter, r *http.Request) {
+	user := app.contextGetUser(r)
+
+	if err := views.PaymentSuccessPage(user).Render(r.Context(), w); err != nil {
+		app.serverError(w, r, err)
+	}
+}
+
+func (app *Application) EsewaFailure(w http.ResponseWriter, r *http.Request) {
+	user := app.contextGetUser(r)
+
+	if err := views.PaymentFailurePage(user).Render(r.Context(), w); err != nil {
 		app.serverError(w, r, err)
 	}
 }
@@ -1166,25 +1104,13 @@ func (app *Application) RemoveFromCart(w http.ResponseWriter, r *http.Request) {
 func (app *Application) Reviews(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r)
 
-	cartItems, err := app.getCartItems(r, user.ID)
-	if err != nil {
-		app.serverError(w, r, err)
-		return
-	}
-
-	views.ProfileRenderer(user, "reviews", cartItems, nil).Render(r.Context(), w)
+	views.ProfileRenderer(user, "reviews").Render(r.Context(), w)
 }
 
 func (app *Application) Messages(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r)
 
-	cartItems, err := app.getCartItems(r, user.ID)
-	if err != nil {
-		app.serverError(w, r, err)
-		return
-	}
-
-	views.ProfileRenderer(user, "messages", cartItems, nil).Render(r.Context(), w)
+	views.ProfileRenderer(user, "messages").Render(r.Context(), w)
 }
 
 func (app *Application) Login(w http.ResponseWriter, r *http.Request) {
@@ -1214,60 +1140,7 @@ func (app *Application) Dashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	orders, err := app.loadOrderViews(r, 0)
-	if err != nil {
-		app.serverError(w, r, err)
-		return
-	}
-
-	views.DashboardRenderer(user, "products", categories, products, orders).Render(r.Context(), w)
-}
-
-func (app *Application) loadOrderViews(r *http.Request, customerID int32) ([]views.OrderView, error) {
-	orders, err := app.queries.ListOrders(r.Context(), customerID)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(orders) == 0 {
-		return []views.OrderView{}, nil
-	}
-
-	orderIDs := make([]int32, 0, len(orders))
-	for _, order := range orders {
-		orderIDs = append(orderIDs, order.ID)
-	}
-
-	items, err := app.queries.ListOrderItems(r.Context(), orderIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	itemsByOrder := make(map[int32][]db.ListOrderItemsRow, len(orders))
-	for _, item := range items {
-		itemsByOrder[item.OrderID] = append(itemsByOrder[item.OrderID], item)
-	}
-
-	orderViews := make([]views.OrderView, 0, len(orders))
-	for _, order := range orders {
-		orderViews = append(orderViews, views.OrderView{
-			ID:               order.ID,
-			CustomerName:     order.CustomerName,
-			CustomerPhone:    order.CustomerPhone,
-			Status:           order.Status,
-			PaymentMethod:    order.PaymentMethod,
-			PaymentStatus:    order.PaymentStatus,
-			TotalAmount:      order.TotalAmount,
-			TotalQuantity:    order.TotalQuantity,
-			DeliveryAddress:  order.DeliveryAddress,
-			DeliveryDistrict: order.DeliveryDistrict,
-			DeliveryPhone:    order.DeliveryPhone,
-			CreatedAt:        order.CreatedAt,
-			Items:            itemsByOrder[order.ID],
-		})
-	}
-
-	return orderViews, nil
+	views.DashboardRenderer(user, "products", categories, products).Render(r.Context(), w)
 }
 
 func (app *Application) SearchProducts(w http.ResponseWriter, r *http.Request) {
@@ -1647,14 +1520,8 @@ func (app *Application) updateProfile(w http.ResponseWriter, r *http.Request) {
 		UpdatedAt: updated.UpdatedAt,
 	}
 
-	cartItems, err := app.getCartItems(r, freshUser.ID)
-	if err != nil {
-		app.serverError(w, r, err)
-		return
-	}
-
 	sse := datastar.NewSSE(w, r)
-	sse.PatchElementTempl(views.ProfileRenderer(freshUser, "profile", cartItems, nil))
+	sse.PatchElementTempl(views.ProfileRenderer(freshUser, "profile"))
 	sse.PatchSignals([]byte(`{"updating": false}`))
 }
 
@@ -1795,19 +1662,6 @@ func processImage(file multipart.File) ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
-}
-
-func slugify(s string) string {
-	s = strings.ToLower(s)
-	s = strings.ReplaceAll(s, " ", "-")
-	return s
-}
-
-func textOrEmpty(t pgtype.Text) string {
-	if !t.Valid {
-		return ""
-	}
-	return t.String
 }
 
 func (app *Application) UpdateCategory(w http.ResponseWriter, r *http.Request) {

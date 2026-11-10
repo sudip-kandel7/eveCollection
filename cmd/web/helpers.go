@@ -3,7 +3,11 @@ package main
 import (
 	"errors"
 	"net/http"
-
+	"crypto/hmac"
+		"crypto/sha256"
+		"encoding/base64"
+		"github.com/jackc/pgx/v5/pgtype"
+		"strings"
 	"github.com/go-playground/form/v4"
 	"github.com/sudip-kandel7/eveCollection/internal/db"
 )
@@ -56,4 +60,37 @@ func (app *Application) contextGetUser(r *http.Request) *db.User {
 	}
 
 	return user
+}
+
+
+func generateSignature(message, secretKey string) string {
+    h := hmac.New(sha256.New, []byte(secretKey))
+    h.Write([]byte(message))
+    return base64.StdEncoding.EncodeToString(h.Sum(nil))
+}
+
+func slugify(s string) string {
+	s = strings.ToLower(s)
+	s = strings.ReplaceAll(s, " ", "-")
+	return s
+}
+
+func textOrEmpty(t pgtype.Text) string {
+	if !t.Valid {
+		return ""
+	}
+	return t.String
+}
+
+func numericToFloat(n pgtype.Numeric) (float64, error) {
+    f, err := n.Float64Value()
+    if err != nil {
+        return 0, err
+    }
+
+    if !f.Valid {
+        return 0, errors.New("numeric value is NULL")
+    }
+
+    return f.Float64, nil
 }

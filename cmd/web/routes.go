@@ -34,9 +34,12 @@ func (app *Application) routes() http.Handler {
 	mux.Handle("POST /cart/checkout", app.requireAuth(http.HandlerFunc(app.cartCheckout)))
 
 	mux.Handle("GET /orders", app.requireAuth(http.HandlerFunc(app.Orders)))
-	mux.Handle("GET /orders/{id}", app.requireAuth(http.HandlerFunc(app.CustomerOrderDetail)))
 	mux.Handle("GET /orders/{id}/success", app.requireAuth(http.HandlerFunc(app.OrderSuccess)))
+	mux.Handle("GET /orders/{id}/pay", app.requireAuth(http.HandlerFunc(app.OrderPay)))
+	mux.Handle("GET /payment/success", app.requireAuth(http.HandlerFunc(app.EsewaSuccess)))
+	mux.Handle("GET /payment/failure", app.requireAuth(http.HandlerFunc(app.EsewaFailure)))
 	mux.Handle("GET /cart", app.requireAuth(http.HandlerFunc(app.Cart)))
+	mux.HandleFunc("GET /cart/count", app.CartCount)
 	mux.Handle("GET /checkout", app.requireAuth(http.HandlerFunc(app.Checkout)))
 	mux.Handle("POST /place-order", app.requireAuth(http.HandlerFunc(app.PlaceOrder)))
 	mux.Handle("GET /messages", app.requireAuth(http.HandlerFunc(app.Messages)))
@@ -46,10 +49,6 @@ func (app *Application) routes() http.Handler {
 	mux.Handle("POST /admin/categories", app.requireAdmin(http.HandlerFunc(app.Categories)))
 	mux.Handle("POST /admin/categories/{id}", app.requireAdmin(http.HandlerFunc(app.UpdateCategory)))
 	mux.Handle("POST /admin/categories/{id}/delete", app.requireAdmin(http.HandlerFunc(app.DeleteCategory)))
-
-	mux.Handle("GET /admin/orders/{id}", app.requireAdmin(http.HandlerFunc(app.AdminOrderDetail)))
-	mux.Handle("POST /admin/orders/{id}/status", app.requireAdmin(http.HandlerFunc(app.UpdateOrderStatus)))
-	mux.Handle("POST /admin/orders/{id}/payment", app.requireAdmin(http.HandlerFunc(app.UpdateOrderPaymentStatus)))
 
 	mux.Handle("POST /admin/products", app.requireAdmin(http.HandlerFunc(app.Products)))
 	mux.Handle("POST /admin/products/{id}", app.requireAdmin(http.HandlerFunc(app.UpdateProduct)))
