@@ -1,0 +1,479 @@
+package views
+
+import (
+	"strconv"
+
+	"github.com/sudip-kandel7/eveCollection/internal/db"
+)
+
+func checkoutUserValue(user *db.User, value func(*db.User) string) string {
+	if user == nil {
+		return ""
+	}
+	return value(user)
+}
+
+func checkoutUserName(user *db.User) string {
+	return checkoutUserValue(user, func(u *db.User) string { return u.Name })
+}
+
+func checkoutUserPhone(user *db.User) string {
+	return checkoutUserValue(user, func(u *db.User) string { return u.Phone })
+}
+
+func checkoutUserAddress(user *db.User) string {
+	return checkoutUserValue(user, func(u *db.User) string { return u.Address })
+}
+
+func checkoutSubtotal(products []db.GetProductByVariantIDRow) float64 {
+    subtotal := 0.0
+    for _, product := range products {
+        subtotal += product.Price * float64(product.Quantity)
+    }
+    return subtotal
+}
+
+func checkoutSubtotalSignal(products []db.GetProductByVariantIDRow) string {
+	return strconv.FormatFloat(checkoutSubtotal(products), 'f', -1, 64)
+}
+
+func checkoutMoneyTextExpr(expr string) string {
+	return "'Rs. ' + (" + expr + ").toLocaleString('en-IN')"
+}
+
+func checkoutBackLabel(source string) string {
+	if source == "cart" {
+		return "Back to cart"
+	}
+	return "Back to product"
+}
+
+func checkoutBackHref(source string, products []db.GetProductByVariantIDRow) string {
+	if source == "cart" {
+		return "/cart"
+	}
+	return "/products/" + strconv.Itoa(int(products[0].ProductID))
+}
+
+templ checkout(user *db.User, products []db.GetProductByVariantIDRow, source string) {
+	@checkoutPage(user, products, source)
+}
+
+templ checkoutPage(user *db.User, products []db.GetProductByVariantIDRow, source string) {
+	<div class="bg-[#F7F8F5]" style="font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;">
+		<div class="mx-auto w-full max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
+			<a
+				href={ checkoutBackHref(source, products) }
+				class="group inline-flex items-center gap-2 text-sm font-medium text-[#8A9285] transition hover:text-[#20231F]"
+			>
+				<svg
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					class="h-4 w-4"
+					aria-hidden="true"
+				>
+					<path d="M19 12H5M11 6l-6 6 6 6"></path>
+				</svg>
+				<span>{ checkoutBackLabel(source) }</span>
+			</a>
+
+			
+			<div>
+				<h1 class="text-3xl mt-3 font-extrabold tracking-tight text-[#20231F] sm:text-4xl">Checkout</h1>
+				<p class="mt-2 max-w-xl text-sm leading-relaxed text-[#63685F] sm:text-base">
+					Confirm your delivery details and review your order before placing it.
+				</p>
+			</div>
+
+			<form
+				id="checkout-form"
+				data-on:submit__prevent="$orderError = ''; $checkoutSubmitting = true; @post('/place-order', {contentType: 'form'})"
+				data-signals:order-error="''"
+				data-signals:checkout-submitting="false"
+				data-signals:subtotal={ checkoutSubtotalSignal(products) }
+				data-computed:delivery="$district === 'Kathmandu' ? 150 : 250"
+				data-computed:total="$subtotal + $delivery"
+				class="mt-8 grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_390px]"
+			>
+				<div class="space-y-6">
+					<section class="overflow-hidden rounded-2xl border border-[#E5E8DF] bg-white">
+						<div class="border-b border-[#EEF1EA] px-5 py-4 sm:px-6">
+							<div class="flex items-center gap-3">
+								<span class="flex h-9 w-9 items-center justify-center rounded-full bg-[#EEF3E7] text-[#5B744E]">
+									<svg
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										class="h-4 w-4"
+										aria-hidden="true"
+									>
+										<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"></path>
+										<circle cx="12" cy="10" r="3"></circle>
+									</svg>
+								</span>
+								<div>
+									<h2 class="text-lg font-semibold text-[#20231F]">Delivery details</h2>
+									<p class="mt-0.5 text-xs text-[#7A8374]">Where should we deliver your order?</p>
+								</div>
+							</div>
+						</div>
+
+						<div class="grid grid-cols-1 gap-5 px-5 py-6 sm:grid-cols-2 sm:px-6">
+							<div>
+								<label for="checkout-name" class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[#63685F]">
+									Full name
+								</label>
+								<input
+									id="checkout-name"
+									type="text"
+									name="name"
+									value={ checkoutUserName(user) }
+									placeholder="Your full name"
+									class="w-full rounded-xl border border-[#E5E8DF] bg-[#F7F8F5] px-4 py-3 text-sm text-[#20231F] outline-none transition placeholder:text-[#A0A799] focus:border-[#9DB08C] focus:bg-white focus:ring-2 focus:ring-[#DCE8D2]"
+									disabled
+								/>
+							</div>
+
+							<div>
+								<label for="checkout-phone" class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[#63685F]">
+									Phone number
+								</label>
+								<input
+									id="checkout-phone"
+									type="tel"
+									name="phone"
+									value={ checkoutUserPhone(user) }
+									placeholder="98XXXXXXXX"
+									class="w-full rounded-xl border border-[#E5E8DF] bg-[#F7F8F5] px-4 py-3 text-sm text-[#20231F] outline-none transition placeholder:text-[#A0A799] focus:border-[#9DB08C] focus:bg-white focus:ring-2 focus:ring-[#DCE8D2]"
+								/>
+								<div id="err-phone"></div>
+							</div>
+
+							<div class="sm:col-span-2">
+								<label for="checkout-district" class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[#63685F]">
+									District
+								</label>
+								<div class="relative">
+									<select
+										id="checkout-district"
+										data-bind="district"
+										data-signals:district="'Kathmandu'"
+										name="district"
+										class="w-full appearance-none rounded-xl border border-[#E5E8DF] bg-[#F7F8F5] px-4 py-3 pr-10 text-sm text-[#20231F] outline-none transition focus:border-[#9DB08C] focus:bg-white focus:ring-2 focus:ring-[#DCE8D2]"
+									>
+										<optgroup label="Koshi">
+											<option value="Bhojpur">Bhojpur</option>
+											<option value="Dhankuta">Dhankuta</option>
+											<option value="Ilam">Ilam</option>
+											<option value="Jhapa">Jhapa</option>
+											<option value="Khotang">Khotang</option>
+											<option value="Morang">Morang</option>
+											<option value="Okhaldhunga">Okhaldhunga</option>
+											<option value="Panchthar">Panchthar</option>
+											<option value="Sankhuwasabha">Sankhuwasabha</option>
+											<option value="Solukhumbu">Solukhumbu</option>
+											<option value="Sunsari">Sunsari</option>
+											<option value="Taplejung">Taplejung</option>
+											<option value="Terhathum">Terhathum</option>
+											<option value="Udayapur">Udayapur</option>
+										</optgroup>
+										<optgroup label="Madhesh">
+											<option value="Bara">Bara</option>
+											<option value="Dhanusha">Dhanusha</option>
+											<option value="Mahottari">Mahottari</option>
+											<option value="Parsa">Parsa</option>
+											<option value="Rautahat">Rautahat</option>
+											<option value="Saptari">Saptari</option>
+											<option value="Sarlahi">Sarlahi</option>
+											<option value="Siraha">Siraha</option>
+										</optgroup>
+										<optgroup label="Bagmati">
+											<option value="Bhaktapur">Bhaktapur</option>
+											<option value="Chitwan">Chitwan</option>
+											<option value="Dhading">Dhading</option>
+											<option value="Dolakha">Dolakha</option>
+											<option value="Kathmandu" selected>Kathmandu</option>
+											<option value="Kavrepalanchok">Kavrepalanchok</option>
+											<option value="Lalitpur">Lalitpur</option>
+											<option value="Makwanpur">Makwanpur</option>
+											<option value="Nuwakot">Nuwakot</option>
+											<option value="Ramechhap">Ramechhap</option>
+											<option value="Rasuwa">Rasuwa</option>
+											<option value="Sindhuli">Sindhuli</option>
+											<option value="Sindhupalchok">Sindhupalchok</option>
+										</optgroup>
+										<optgroup label="Gandaki">
+											<option value="Baglung">Baglung</option>
+											<option value="Gorkha">Gorkha</option>
+											<option value="Kaski">Kaski</option>
+											<option value="Lamjung">Lamjung</option>
+											<option value="Manang">Manang</option>
+											<option value="Mustang">Mustang</option>
+											<option value="Myagdi">Myagdi</option>
+											<option value="Nawalpur">Nawalpur</option>
+											<option value="Parbat">Parbat</option>
+											<option value="Syangja">Syangja</option>
+											<option value="Tanahun">Tanahun</option>
+										</optgroup>
+										<optgroup label="Lumbini">
+											<option value="Arghakhanchi">Arghakhanchi</option>
+											<option value="Banke">Banke</option>
+											<option value="Bardiya">Bardiya</option>
+											<option value="Dang">Dang</option>
+											<option value="Gulmi">Gulmi</option>
+											<option value="Kapilvastu">Kapilvastu</option>
+											<option value="Parasi">Parasi</option>
+											<option value="Palpa">Palpa</option>
+											<option value="Pyuthan">Pyuthan</option>
+											<option value="Rolpa">Rolpa</option>
+											<option value="Rukum East">Rukum East</option>
+											<option value="Rupandehi">Rupandehi</option>
+										</optgroup>
+										<optgroup label="Karnali">
+											<option value="Dailekh">Dailekh</option>
+											<option value="Dolpa">Dolpa</option>
+											<option value="Humla">Humla</option>
+											<option value="Jajarkot">Jajarkot</option>
+											<option value="Jumla">Jumla</option>
+											<option value="Kalikot">Kalikot</option>
+											<option value="Mugu">Mugu</option>
+											<option value="Rukum West">Rukum West</option>
+											<option value="Salyan">Salyan</option>
+											<option value="Surkhet">Surkhet</option>
+										</optgroup>
+										<optgroup label="Sudurpashchim">
+											<option value="Achham">Achham</option>
+											<option value="Baitadi">Baitadi</option>
+											<option value="Bajhang">Bajhang</option>
+											<option value="Bajura">Bajura</option>
+											<option value="Dadeldhura">Dadeldhura</option>
+											<option value="Darchula">Darchula</option>
+											<option value="Doti">Doti</option>
+											<option value="Kailali">Kailali</option>
+											<option value="Kanchanpur">Kanchanpur</option>
+										</optgroup>
+									</select>
+									<svg
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										class="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A9285]"
+										aria-hidden="true"
+									>
+										<path d="M6 9l6 6 6-6"></path>
+									</svg>
+								</div>
+								<p class="mt-1.5 text-xs text-[#8A9285]">Delivery inside Kathmandu is Rs. 150; outside Kathmandu is Rs. 250.</p>
+							</div>
+
+							<div class="sm:col-span-2">
+								<label for="checkout-address" class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[#63685F]">
+									Delivery address
+								</label>
+								<textarea
+									id="checkout-address"
+									name="address"
+									rows="3"
+									placeholder="Street, area, landmark"
+									class="w-full resize-none rounded-xl border border-[#E5E8DF] bg-[#F7F8F5] px-4 py-3 text-sm leading-relaxed text-[#20231F] outline-none transition placeholder:text-[#A0A799] focus:border-[#9DB08C] focus:bg-white focus:ring-2 focus:ring-[#DCE8D2]"
+								>{ checkoutUserAddress(user) }</textarea>
+								<div id="err-address"></div>
+							</div>
+						</div>
+					</section>
+
+					<section class="overflow-hidden rounded-2xl border border-[#E5E8DF] bg-white">
+						<div class="border-b border-[#EEF1EA] px-5 py-4 sm:px-6">
+							<div class="flex items-center gap-3">
+								<span class="flex h-9 w-9 items-center justify-center rounded-full bg-[#EEF3E7] text-[#5B744E]">
+									<svg
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										class="h-4 w-4"
+										aria-hidden="true"
+									>
+										<rect x="2" y="5" width="20" height="14" rx="2"></rect>
+										<path d="M2 10h20"></path>
+									</svg>
+								</span>
+								<div>
+									<h2 class="text-lg font-semibold text-[#20231F]">Payment method</h2>
+									<p class="mt-0.5 text-xs text-[#7A8374]">Choose how you would like to pay.</p>
+								</div>
+							</div>
+						</div>
+
+						<div class="px-5 py-6 sm:px-6" data-signals:payment="'esewa'">
+							<div class="space-y-3">
+								<label class="flex cursor-pointer items-start gap-4 rounded-xl border border-[#E5E8DF] bg-white p-4 transition has-[:checked]:border-[#283B28] has-[:checked]:bg-[#F7FAF3] has-[:checked]:ring-1 has-[:checked]:ring-[#283B28]/10">
+									<input
+										type="radio"
+										name="payment"
+										value="esewa"
+										checked
+										data-bind="payment"
+										class="mt-0.5 h-4 w-4 shrink-0 accent-[#283B28]"
+									/>
+									<span class="min-w-0 flex-1">
+										<span class="text-sm font-semibold text-[#20231F]">eSewa</span>
+										<span class="mt-1 block text-sm leading-relaxed text-[#63685F]">
+											Pay securely with eSewa. Your payment will be confirmed before the order is processed.
+										</span>
+									</span>
+									<svg
+										data-show="$payment === 'esewa'"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										class="mt-0.5 h-5 w-5 shrink-0 text-[#5B744E]"
+										aria-hidden="true"
+									>
+										<path d="M20 6L9 17l-5-5"></path>
+									</svg>
+								</label>
+
+								<label class="flex cursor-pointer items-start gap-4 rounded-xl border border-[#E5E8DF] bg-white p-4 transition has-[:checked]:border-[#283B28] has-[:checked]:bg-[#F7FAF3] has-[:checked]:ring-1 has-[:checked]:ring-[#283B28]/10">
+									<input
+										type="radio"
+										name="payment"
+										value="cod"
+										data-bind="payment"
+										class="mt-0.5 h-4 w-4 shrink-0 accent-[#283B28]"
+									/>
+									<span class="min-w-0 flex-1">
+										<span class="text-sm font-semibold text-[#20231F]">Cash on delivery</span>
+										<span class="mt-1 block text-sm leading-relaxed text-[#63685F]">
+											Pay in cash when your order is delivered.
+										</span>
+									</span>
+									<svg
+										style="display: none"
+										data-show="$payment === 'cod'"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										class="mt-0.5 h-5 w-5 shrink-0 text-[#5B744E]"
+										aria-hidden="true"
+									>
+										<path d="M20 6L9 17l-5-5"></path>
+									</svg>
+								</label>
+							</div>
+						</div>
+					</section>
+				</div>
+
+				<aside class="rounded-2xl border border-[#E5E8DF] bg-white p-5 sm:p-6 lg:sticky lg:top-24">
+					<div class="flex items-center justify-between gap-3">
+						<div>
+							<h2 class="text-lg font-semibold text-[#20231F]">Order summary</h2>
+							<p class="mt-0.5 text-xs text-[#8A9285]">{ len(products) } items</p>
+						</div>
+					</div>
+
+					<div class="mt-5 space-y-4">
+						for _, product := range products {
+							<div class="flex gap-3">
+								<img
+									src={ product.ImageUrl }
+									alt={ product.ProductName }
+									class="h-20 w-20 shrink-0 rounded-xl object-cover"
+								/>
+								<div class="min-w-0 flex-1">
+									<p class="truncate text-lg font-semibold text-[#20231F]">{ product.ProductName }</p>
+									<p class="mt-0.5 text-xs text-[#8A9285]">{ product.Color } / { product.Size }</p>
+									<div class="mt-2 flex items-center justify-between gap-3">
+										<span class="text-xs text-[#63685F]">Qty { product.Quantity }</span>
+										<span class="text-sm font-semibold text-[#283B28]">{ formatPrice(product.Price * float64(product.Quantity)) }</span>
+									</div>
+								</div>
+							</div>
+						}
+					</div>
+
+					<div class="my-5 h-px w-full bg-[#E5E8DF]"></div>
+
+					<div class="space-y-3 text-sm">
+						<div class="flex items-center justify-between gap-4">
+							<span class="text-[#63685F]">Subtotal</span>
+							<span
+								class="font-semibold text-[#20231F]"
+								data-text={ checkoutMoneyTextExpr("$subtotal") }
+							>{ formatPrice(checkoutSubtotal(products)) }</span>
+						</div>
+						<div class="flex items-center justify-between gap-4">
+							<span class="text-[#63685F]">Delivery</span>
+							<span
+								class="font-semibold text-[#20231F]"
+								data-text={ checkoutMoneyTextExpr("$delivery") }
+								>{ formatPrice(150) }</span>
+						</div>
+					</div>
+
+					<div class="my-5 h-px w-full bg-[#E5E8DF]"></div>
+
+					<div class="flex items-center justify-between gap-4">
+						<span class="text-base font-semibold text-[#20231F]">Total</span>
+						<span
+							class="text-xl font-bold text-[#283B28]"
+							data-text={ checkoutMoneyTextExpr("$total") }
+							>{ formatPrice(checkoutSubtotal(products) + 150) }</span>
+					</div>
+
+					<button
+						type="submit"
+						data-attr:disabled="$checkoutSubmitting"
+						class="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#283B28] px-5 py-3.5 text-sm font-semibold text-[#F7F8F5] transition hover:bg-[#20261F] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#283B28]"
+					>
+						<span data-show="!$checkoutSubmitting">Place order</span>
+						<span data-show="$checkoutSubmitting">Placing order...</span>
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="h-4 w-4"
+							aria-hidden="true"
+						>
+							<path d="M5 12h14M13 6l6 6-6 6"></path>
+						</svg>
+					</button>
+
+					<p
+						data-show="$orderError"
+						data-text="$orderError"
+						class="mt-3 rounded-xl border border-[#E8C9C3] bg-[#FDF5F3] px-4 py-3 text-sm text-[#B45A45]"
+					></p>
+				</aside>
+			</form>
+		</div>
+	</div>
+}
+
+templ CheckoutRenderer(user *db.User, products []db.GetProductByVariantIDRow, source string) {
+	@Html("Checkout", user, "checkout") {
+		@checkout(user, products, source)
+	}
+}

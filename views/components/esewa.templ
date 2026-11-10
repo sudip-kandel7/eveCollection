@@ -1,0 +1,29 @@
+package components
+
+templ Esewa( amount string, taxAmount string, totalAmount string, transactionUUID string, productCode string, signature string, productServiceCharge string, productDeliveryCharge string) {
+	<form id="esewaForm" action="https://rc-epay.esewa.com.np/api/epay/main/v2/form" method="POST">
+
+        <input type="hidden" name="amount" value={ amount } />
+        <input type="hidden" name="tax_amount" value={ taxAmount } />
+        <input type="hidden" name="total_amount" value={ totalAmount } />
+
+        <input type="hidden" name="transaction_uuid" value={ transactionUUID } />
+        <input type="hidden" name="product_code" value={ productCode } />
+
+        <input type="hidden" name="product_service_charge" value={ productServiceCharge } />
+        <input type="hidden" name="product_delivery_charge" value={ productDeliveryCharge } />
+
+        <input type="hidden" name="success_url" value="http://localhost:8080/payment/success" />
+        <input type="hidden" name="failure_url" value="http://localhost:8080/payment/failure" />
+
+        <input type="hidden" name="signed_field_names" value="total_amount,transaction_uuid,product_code" />
+        <input type="hidden" name="signature" value={ signature } />
+
+    </form>
+
+    <script>
+      const form = document.getElementById("esewaForm");
+      if (form) form.submit();
+    </script>
+    
+}

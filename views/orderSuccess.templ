@@ -1,0 +1,111 @@
+package views
+
+import (
+	"strconv"
+
+	"github.com/sudip-kandel7/eveCollection/internal/db"
+)
+
+func orderPaymentLabel(method string) string {
+	if method == "cod" {
+		return "Cash on delivery"
+	}
+	return "eSewa"
+}
+
+templ orderSuccessPage(user *db.User, order db.GetOrderByCustomerRow) {
+	<div class="flex flex-1 items-center justify-center bg-[#F7F8F5] px-5 py-12 sm:py-16">
+		<div class="w-full max-w-xl rounded-3xl border border-[#E5E8DF] bg-white px-6 py-10 text-center sm:px-10">
+			<span class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#EEF3E7] text-[#5B744E]">
+				<svg
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					class="h-10 w-10"
+					aria-hidden="true"
+				>
+					<path d="M20 6L9 17l-5-5"></path>
+				</svg>
+			</span>
+
+			<p class="mt-6 text-xs font-semibold uppercase tracking-[0.2em] text-[#7A8374]">Order placed</p>
+			<h1 class="mt-2 text-3xl font-extrabold tracking-tight text-[#20231F] sm:text-4xl">
+				Thank you, { user.Name }
+			</h1>
+			<p class="mt-4 text-sm leading-relaxed text-[#63685F] sm:text-base">
+				Your order <span class="font-semibold text-[#20231F]">#{ strconv.Itoa(int(order.ID)) }</span> is placed and will be delivered soon.
+			</p>
+			<p class="mt-2 text-sm text-[#8A9285]">
+				{ orderPaymentLabel(order.PaymentMethod) } · { formatPrice(order.TotalAmount) }
+			</p>
+
+			<div class="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+				<a
+					href="/orders"
+					class="inline-flex items-center justify-center rounded-xl bg-[#283B28] px-6 py-3 text-sm font-semibold text-[#F7F8F5] transition hover:bg-[#20261F]"
+				>
+					Track order
+				</a>
+				<a
+					href="/"
+					class="inline-flex items-center justify-center rounded-xl border border-[#DCE2D7] bg-white px-6 py-3 text-sm font-semibold text-[#283B28] transition hover:bg-[#F3F5F0]"
+				>
+					Back to shopping
+				</a>
+			</div>
+		</div>
+	</div>
+}
+
+templ OrderSuccessRenderer(user *db.User, order db.GetOrderByCustomerRow) {
+	@Html("Order placed", user, "orders") {
+		@orderSuccessPage(user, order)
+	}
+}
+
+templ paymentFailurePage(user *db.User, message string) {
+	<div class="flex flex-1 items-center justify-center bg-[#F7F8F5] px-5 py-12">
+		<div class="w-full max-w-lg rounded-3xl border border-[#E5E8DF] bg-white px-6 py-10 text-center">
+			<span class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#FDF5F3] text-[#B45A45]">
+				<svg
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					class="h-8 w-8"
+					aria-hidden="true"
+				>
+					<path d="M18 6L6 18M6 6l12 12"></path>
+				</svg>
+			</span>
+			<p class="mt-6 text-xs font-semibold uppercase tracking-[0.2em] text-[#B45A45]">Payment failed</p>
+			<h1 class="mt-2 text-2xl font-bold text-[#20231F]">We could not complete your payment</h1>
+			<p class="mt-3 text-sm text-[#63685F]">{ message }</p>
+			<div class="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+				<a
+					href="/checkout"
+					class="inline-flex items-center justify-center rounded-xl bg-[#283B28] px-6 py-3 text-sm font-semibold text-[#F7F8F5] transition hover:bg-[#20261F]"
+				>
+					Try again
+				</a>
+				<a
+					href="/"
+					class="inline-flex items-center justify-center rounded-xl border border-[#DCE2D7] bg-white px-6 py-3 text-sm font-semibold text-[#283B28] transition hover:bg-[#F3F5F0]"
+				>
+					Back to shopping
+				</a>
+			</div>
+		</div>
+	</div>
+}
+
+templ PaymentFailureRenderer(user *db.User, message string) {
+	@Html("Payment failed", user, "orders") {
+		@paymentFailurePage(user, message)
+	}
+}
