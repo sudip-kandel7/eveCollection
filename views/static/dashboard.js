@@ -269,3 +269,9 @@ window.setExistingImages = function (urls) {
 
   addVariant();
 })();
+
+// to close the model that shows order detail in /orders page yo dui ta place bata call bhaxa button and div__utside
+window.closeOrderModal = function () {
+  var el = document.getElementById('order-model');
+  if (el) el.innerHTML = '';
+};

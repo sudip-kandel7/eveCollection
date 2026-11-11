@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -526,7 +527,25 @@ func (app *Application) About(w http.ResponseWriter, r *http.Request) {
 func (app *Application) Orders(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r)
 
-	views.ProfileRenderer(user, "orders").Render(r.Context(), w)
+	orders, err := app.queries.GetOrders(r.Context(), pgtype.Int4{Int32: user.ID, Valid: true})
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	views.OrdersRenderer(user, orders).Render(r.Context(), w)
+}
+
+func (app *Application) AdminOrders(w http.ResponseWriter, r *http.Request) {
+	user := app.contextGetUser(r)
+
+	orders, err := app.queries.GetOrders(r.Context(), pgtype.Int4{})
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	views.AdminOrdersRenderer(user, orders).Render(r.Context(), w)
 }
 
 func (app *Application) OrderSuccess(w http.ResponseWriter, r *http.Request) {
@@ -880,7 +899,7 @@ func (app *Application) PlaceOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cleanupOrder := func() {
-		app.deleteOrder(r, orderId)
+		app.cleanupOrderOrMarkPaid(r, orderId, user.ID)
 	}
 
 	for _, item := range items {
@@ -990,6 +1009,28 @@ func (app *Application) deleteOrder(r *http.Request, orderID int32) {
 	}
 }
 
+func (app *Application) cleanupOrderOrMarkPaid(r *http.Request, orderID, customerID int32) {
+	order, err := app.queries.GetOrderByCustomer(r.Context(), db.GetOrderByCustomerParams{
+		ID:         orderID,
+		CustomerID: customerID,
+	})
+	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			app.logger.Error("failed to load order for cleanup", "order_id", orderID, "error", err)
+		}
+		return
+	}
+
+	if order.PaymentStatus == "paid" {
+		if err := app.queries.MarkOrderPaid(r.Context(), orderID); err != nil {
+			app.logger.Error("failed to mark order paid", "order_id", orderID, "error", err)
+		}
+		return
+	}
+
+	app.deleteOrder(r, orderID)
+}
+
 func (app *Application) OrderPay(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r)
 	if user == nil {
@@ -1037,20 +1078,283 @@ func (app *Application) OrderPay(w http.ResponseWriter, r *http.Request) {
 	_ = components.Esewa(subtotalStr, "0", totalStr, uuid, app.esewaProductCode, signature, "0", deliveryStr).Render(r.Context(), w)
 }
 
+type esewaAmount string
+
+func (a *esewaAmount) UnmarshalJSON(data []byte) error {
+	if len(data) == 0 || string(data) == "null" {
+		*a = ""
+		return nil
+	}
+
+	if data[0] == '"' {
+		var value string
+		if err := json.Unmarshal(data, &value); err != nil {
+			return err
+		}
+		*a = esewaAmount(value)
+		return nil
+	}
+
+	*a = esewaAmount(data)
+	return nil
+}
+
+type esewaPaymentResponse struct {
+	TransactionCode  string      `json:"transaction_code"`
+	Status           string      `json:"status"`
+	TotalAmount      esewaAmount `json:"total_amount"`
+	TransactionUUID  string      `json:"transaction_uuid"`
+	ProductCode      string      `json:"product_code"`
+	SignedFieldNames string      `json:"signed_field_names"`
+	Signature        string      `json:"signature"`
+}
+
+func decodeEsewaPaymentResponse(raw string) (esewaPaymentResponse, error) {
+	var response esewaPaymentResponse
+
+	decoded, err := base64.StdEncoding.DecodeString(raw)
+	if err != nil {
+		return response, err
+	}
+
+	if err := json.Unmarshal(decoded, &response); err != nil {
+		return response, err
+	}
+
+	return response, nil
+}
+
+func esewaAmountMatches(amount float64, raw string) bool {
+	raw = strings.ReplaceAll(strings.TrimSpace(raw), ",", "")
+
+	value, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		return false
+	}
+
+	return strconv.FormatFloat(amount, 'f', 2, 64) == strconv.FormatFloat(value, 'f', 2, 64)
+}
+
+func (app *Application) verifyEsewaResponse(response esewaPaymentResponse) bool {
+	if response.Signature == "" || response.SignedFieldNames == "" {
+		return false
+	}
+
+	parts := make([]string, 0)
+	for _, field := range strings.Split(response.SignedFieldNames, ",") {
+		field = strings.TrimSpace(field)
+
+		var value string
+		switch field {
+		case "transaction_code":
+			value = response.TransactionCode
+		case "status":
+			value = response.Status
+		case "total_amount":
+			value = string(response.TotalAmount)
+		case "transaction_uuid":
+			value = response.TransactionUUID
+		case "product_code":
+			value = response.ProductCode
+		case "signed_field_names":
+			value = response.SignedFieldNames
+		default:
+			return false
+		}
+
+		parts = append(parts, field+"="+value)
+	}
+
+	return verifySignature(strings.Join(parts, ","), response.Signature, app.esewaSecretKey)
+}
+
+func (app *Application) renderPaymentFailure(w http.ResponseWriter, r *http.Request, user *db.User, message string) {
+	if err := views.PaymentFailureRenderer(user, message).Render(r.Context(), w); err != nil {
+		app.serverError(w, r, err)
+	}
+}
+
 func (app *Application) EsewaSuccess(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r)
+	if user == nil {
+		app.clientError(w, http.StatusForbidden)
+		return
+	}
 
-	if err := views.PaymentSuccessPage(user).Render(r.Context(), w); err != nil {
+	raw := r.URL.Query().Get("data")
+	if raw == "" {
+		app.renderPaymentFailure(w, r, user, "Missing payment response.")
+		return
+	}
+
+	response, err := decodeEsewaPaymentResponse(raw)
+	if err != nil {
+		app.logger.Error("failed to decode esewa response", "error", err)
+		app.renderPaymentFailure(w, r, user, "We could not read the payment response.")
+		return
+	}
+
+	if !app.verifyEsewaResponse(response) {
+		app.logger.Warn("esewa payment signature verification failed", "transaction_uuid", response.TransactionUUID)
+		app.renderPaymentFailure(w, r, user, "We could not verify your payment.")
+		return
+	}
+
+	if response.Status != "COMPLETE" {
+		app.renderPaymentFailure(w, r, user, "Your payment was not completed.")
+		return
+	}
+
+	order, err := app.queries.GetOrderByTransactionUUID(r.Context(), pgtype.Text{
+		String: response.TransactionUUID,
+		Valid:  true,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			app.renderPaymentFailure(w, r, user, "We could not find your order.")
+			return
+		}
+		app.serverError(w, r, err)
+		return
+	}
+
+	orderTotal, err := numericToFloat(order.TotalAmount)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	if order.CustomerID != user.ID ||
+		!order.TransactionUuid.Valid ||
+		order.TransactionUuid.String != response.TransactionUUID ||
+		!order.TransactionCode.Valid ||
+		order.TransactionCode.String != app.esewaProductCode ||
+		response.ProductCode != app.esewaProductCode ||
+		!esewaAmountMatches(orderTotal, string(response.TotalAmount)) {
+		app.logger.Warn("esewa payment verification failed",
+			"order_id", order.ID,
+			"transaction_uuid", response.TransactionUUID,
+			"product_code", response.ProductCode,
+			"total_amount", string(response.TotalAmount),
+		)
+		app.renderPaymentFailure(w, r, user, "We could not verify your payment.")
+		return
+	}
+
+	if order.Status == "placed" {
+		placedOrder, err := app.queries.GetOrderByCustomer(r.Context(), db.GetOrderByCustomerParams{
+			ID:         order.ID,
+			CustomerID: user.ID,
+		})
+		if err != nil {
+			app.serverError(w, r, err)
+			return
+		}
+
+		if err := views.OrderSuccessRenderer(user, placedOrder).Render(r.Context(), w); err != nil {
+			app.serverError(w, r, err)
+		}
+		return
+	}
+
+	if order.Status != "pending" {
+		app.renderPaymentFailure(w, r, user, "Your order is no longer awaiting payment.")
+		return
+	}
+
+	orderItems, err := app.queries.GetOrderItemsForPayment(r.Context(), order.ID)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	if len(orderItems) == 0 {
+		app.renderPaymentFailure(w, r, user, "We could not find the items for your order.")
+		return
+	}
+
+	items := make([]orderItem, 0, len(orderItems))
+	intent := checkoutIntent{Source: "product"}
+	if order.FromCart {
+		intent.Source = "cart"
+	}
+	for _, item := range orderItems {
+		items = append(items, orderItem{
+			VariantID: item.VariantID,
+			ProductID: item.ProductID,
+			Quantity:  item.Quantity,
+			Price:     item.UnitPrice,
+		})
+		intent.Items = append(intent.Items, checkoutIntentItem{
+			VariantID: item.VariantID,
+			Quantity:  item.Quantity,
+		})
+	}
+
+	if err := app.queries.MarkOrderPaid(r.Context(), order.ID); err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	cleanupOrder := func() {
+		app.cleanupOrderOrMarkPaid(r, order.ID, user.ID)
+	}
+
+	ok, message := app.afterPlace(r, intent, items, user.ID, cleanupOrder)
+	if !ok {
+		app.renderPaymentFailure(w, r, user, message)
+		return
+	}
+
+	placedOrder, err := app.queries.GetOrderByCustomer(r.Context(), db.GetOrderByCustomerParams{
+		ID:         order.ID,
+		CustomerID: user.ID,
+	})
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	if err := views.OrderSuccessRenderer(user, placedOrder).Render(r.Context(), w); err != nil {
 		app.serverError(w, r, err)
 	}
 }
 
 func (app *Application) EsewaFailure(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r)
-
-	if err := views.PaymentFailurePage(user).Render(r.Context(), w); err != nil {
-		app.serverError(w, r, err)
+	if user == nil {
+		app.clientError(w, http.StatusForbidden)
+		return
 	}
+
+	transactionUUID := r.URL.Query().Get("transaction_uuid")
+	if transactionUUID == "" {
+		if raw := r.URL.Query().Get("data"); raw != "" {
+			if response, err := decodeEsewaPaymentResponse(raw); err == nil {
+				transactionUUID = response.TransactionUUID
+			}
+		}
+	}
+	transactionUUID = strings.TrimSpace(transactionUUID)
+	if idx := strings.IndexAny(transactionUUID, "?&"); idx >= 0 {
+		transactionUUID = transactionUUID[:idx]
+	}
+
+	if transactionUUID != "" {
+		order, err := app.queries.GetOrderByTransactionUUID(r.Context(), pgtype.Text{
+			String: transactionUUID,
+			Valid:  true,
+		})
+		if err != nil {
+			if !errors.Is(err, pgx.ErrNoRows) {
+				app.logger.Error("failed to find order for failed payment", "transaction_uuid", transactionUUID, "error", err)
+			}
+		} else if order.CustomerID == user.ID {
+			app.cleanupOrderOrMarkPaid(r, order.ID, user.ID)
+		}
+	}
+
+	app.renderPaymentFailure(w, r, user, "Your payment failed or was cancelled. Your order has not been placed.")
 }
 
 func (app *Application) patchCheckoutError(w http.ResponseWriter, r *http.Request, message string) {
@@ -1111,6 +1415,78 @@ func (app *Application) Messages(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r)
 
 	views.ProfileRenderer(user, "messages").Render(r.Context(), w)
+}
+
+func (app *Application) Order(w http.ResponseWriter, r *http.Request) {
+    user := app.contextGetUser(r)
+
+    id64, err := strconv.ParseInt(r.PathValue("id"), 10, 32)
+    if err != nil || id64 <= 0 {
+        app.clientError(w, http.StatusNotFound)
+        return
+    }
+    id := int32(id64)
+
+    order, err := app.queries.GetOrderDetail(r.Context(), db.GetOrderDetailParams{
+        OrderID: id, CustomerID: pgtype.Int4{Int32: user.ID, Valid: true},
+    })
+    if err != nil {
+        if errors.Is(err, pgx.ErrNoRows) {
+            app.clientError(w, http.StatusNotFound)
+            return
+        }
+        app.serverError(w, r, err)
+        return
+    }
+
+    items, err := app.queries.GetOrderItems(r.Context(), id)
+    if err != nil {
+        app.serverError(w, r, err)
+        return
+    }
+
+    sse := datastar.NewSSE(w, r)
+    sse.PatchSignals([]byte(`{"orderModalOpen":true}`))
+    sse.PatchElementTempl(
+        components.OrderDetailModal(order, items),
+        datastar.WithSelectorID("order-model"),
+        datastar.WithModeInner(),
+    )
+}
+
+func (app *Application) AdminOrder(w http.ResponseWriter, r *http.Request) {
+    id64, err := strconv.ParseInt(r.PathValue("id"), 10, 32)
+    if err != nil || id64 <= 0 {
+        app.clientError(w, http.StatusNotFound)
+        return
+    }
+    id := int32(id64)
+
+    order, err := app.queries.GetOrderDetail(r.Context(), db.GetOrderDetailParams{
+        OrderID: id,
+    })
+    if err != nil {
+        if errors.Is(err, pgx.ErrNoRows) {
+            app.clientError(w, http.StatusNotFound)
+            return
+        }
+        app.serverError(w, r, err)
+        return
+    }
+
+    items, err := app.queries.GetOrderItems(r.Context(), id)
+    if err != nil {
+        app.serverError(w, r, err)
+        return
+    }
+
+    sse := datastar.NewSSE(w, r)
+    sse.PatchSignals([]byte(`{"orderModalOpen":true}`))
+    sse.PatchElementTempl(
+        components.OrderDetailModal(order, items),
+        datastar.WithSelectorID("order-model"),
+        datastar.WithModeInner(),
+    )
 }
 
 func (app *Application) Login(w http.ResponseWriter, r *http.Request) {

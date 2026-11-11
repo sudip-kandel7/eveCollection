@@ -83,6 +83,9 @@ templ Nav(user *db.User, active string) {
                      <a href="/admin/dashboard"
                      class="block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]">
                     Dashboard </a>
+                     <a href="/admin/orders"
+                     class="block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]">
+                    Orders </a>
                   } else {
                     <a
                         href="/profile"
@@ -115,22 +118,24 @@ templ Nav(user *db.User, active string) {
             </div>
         </div>
 
-        <a
-            href="/cart"
-            class="relative flex h-10 w-10 items-center justify-center md:h-auto md:w-auto"
-            data-init="@get('/cart/count')"
-        >
-            <img
-                src="/static/public/cart.png"
-                class="h-7 w-7"
-                alt="Cart"
-            />
-            <span
-                data-show="$cartCount > 0"
-                data-text="$cartCount"
-                class="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#283B28] px-1 text-[10px] font-semibold leading-none text-white"
-            >0</span>
-        </a>
+        if user.Role != "admin" {
+            <a
+                href="/cart"
+                class="relative flex h-10 w-10 items-center justify-center md:h-auto md:w-auto"
+                data-init="@get('/cart/count')"
+            >
+                <img
+                    src="/static/public/cart.png"
+                    class="h-7 w-7"
+                    alt="Cart"
+                />
+                <span
+                    data-show="$cartCount > 0"
+                    data-text="$cartCount"
+                    class="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#283B28] px-1 text-[10px] font-semibold leading-none text-white"
+                >0</span>
+            </a>
+        }
     }
 			</div>
 

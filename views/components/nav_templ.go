@@ -118,7 +118,7 @@ func Nav(user *db.User, active string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if user.Role == "admin" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<a href=\"/admin/dashboard\" class=\"block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]\">Dashboard </a>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<a href=\"/admin/dashboard\" class=\"block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]\">Dashboard </a> <a href=\"/admin/orders\" class=\"block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]\">Orders </a>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -128,12 +128,18 @@ func Nav(user *db.User, active string) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div><div class=\"border-t border-[#e5e8e2] pt-2\"><form method=\"POST\" action=\"/logout\"><button type=\"submit\" class=\"w-full flex items-center justify-start gap-2 rounded-md px-3 py-2 text-left text-sm text-[#596052] hover:bg-[#f1f3ee]\"><img src=\"/static/public/logout.png\" alt=\"Logout\" class=\"h-4 w-4 opacity-60 transition-opacity duration-200 group-hover:opacity-100\"> Logout</button></form></div></div></div><a href=\"/cart\" class=\"relative flex h-10 w-10 items-center justify-center md:h-auto md:w-auto\" data-init=\"@get('/cart/count')\"><img src=\"/static/public/cart.png\" class=\"h-7 w-7\" alt=\"Cart\"> <span data-show=\"$cartCount > 0\" data-text=\"$cartCount\" class=\"absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#283B28] px-1 text-[10px] font-semibold leading-none text-white\">0</span></a>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div><div class=\"border-t border-[#e5e8e2] pt-2\"><form method=\"POST\" action=\"/logout\"><button type=\"submit\" class=\"w-full flex items-center justify-start gap-2 rounded-md px-3 py-2 text-left text-sm text-[#596052] hover:bg-[#f1f3ee]\"><img src=\"/static/public/logout.png\" alt=\"Logout\" class=\"h-4 w-4 opacity-60 transition-opacity duration-200 group-hover:opacity-100\"> Logout</button></form></div></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
+			if user.Role != "admin" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<a href=\"/cart\" class=\"relative flex h-10 w-10 items-center justify-center md:h-auto md:w-auto\" data-init=\"@get('/cart/count')\"><img src=\"/static/public/cart.png\" class=\"h-7 w-7\" alt=\"Cart\"> <span data-show=\"$cartCount > 0\" data-text=\"$cartCount\" class=\"absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#283B28] px-1 text-[10px] font-semibold leading-none text-white\">0</span></a>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</div></div></nav>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</div></div></nav>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

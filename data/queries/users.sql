@@ -526,5 +526,61 @@ UPDATE orders
 SET status = 'placed', payment_status = 'paid', updated_at = NOW()
 WHERE id = $1;
 
+-- name: UpdateOrderStatus :exec
+UPDATE orders
+SET status = $2, updated_at = NOW()
+WHERE id = $1;
+
+-- name: UpdateOrderPaymentStatus :exec
+UPDATE orders
+SET payment_status = $2, updated_at = NOW()
+WHERE id = $1;
+
 -- name: DeleteOrderItems :exec
 DELETE FROM order_items WHERE order_id = $1;
+
+-- name: GetOrders :many
+
+SELECT o.id, o.created_at AS date, o.status, o.payment_status, o.payment_method, o.total_amount, COALESCE(SUM(oi.quantity), 0)::bigint AS total_items FROM orders o
+LEFT JOIN order_items oi ON oi.order_id = o.id
+WHERE (o.customer_id = sqlc.narg('customer_id')::int OR sqlc.narg('customer_id') IS NULL)
+GROUP BY o.id ORDER BY o.created_at DESC; 
+
+-- name: GetOrderDetail :one
+SELECT
+    o.id,
+    o.status,
+    o.payment_method,
+    o.payment_status,
+    o.total_amount,
+    o.created_at AS date,
+    u.name AS customer_name,
+    o.delivery_phone,
+    o.delivery_address,
+    o.delivery_district
+FROM orders o
+JOIN users u ON u.id = o.customer_id
+WHERE o.id = sqlc.arg('order_id')::int
+  AND (o.customer_id = sqlc.narg('customer_id')::int OR sqlc.narg('customer_id') IS NULL);
+
+-- name: GetOrderItems :many
+SELECT
+    oi.id,
+    oi.variant_id,
+    oi.quantity,
+    oi.unit_price::float8 AS unit_price,
+    p.name AS product_name,
+    COALESCE(pv.size, '') AS size,
+    COALESCE(pv.color, '') AS color,
+    COALESCE((
+        SELECT pi.image_url
+        FROM product_images pi
+        WHERE pi.product_id = p.id
+        ORDER BY pi.sort_order ASC, pi.id ASC
+        LIMIT 1
+    ), '')::text AS image_url
+FROM order_items oi
+JOIN product_variants pv ON pv.id = oi.variant_id
+JOIN products p ON p.id = pv.product_id
+WHERE oi.order_id = sqlc.arg('order_id')::int
+ORDER BY oi.id ASC;

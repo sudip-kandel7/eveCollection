@@ -25,7 +25,6 @@ templ dashboard(user *db.User, tab string, categories []db.ListCategoriesWithPCR
 				@dashboardNavLink("overview", "Overview")
 				@dashboardNavLink("category", "Category")
 				@dashboardNavLink("products", "Products")
-				@dashboardNavLink("orders", "Orders")
 				@dashboardNavLink("messages", "Messages")
 				@dashboardNavLink("reviews", "Reviews")
 			</nav>
@@ -33,7 +32,6 @@ templ dashboard(user *db.User, tab string, categories []db.ListCategoriesWithPCR
 
 		<div class="flex-1">
 			@OverviewContent(user)
-			@OrdersAdminContent()
 			@CategoryAdminContent(categories)
 			@ProductsAdminContent(categories, products)
 			@MessagesAdminContent()
@@ -461,13 +459,6 @@ templ ProductsList(products []db.ListProductsRow) {
 			}
 		}
 	</div>
-}
-
-templ OrdersAdminContent() {
-	<section data-show="$activetab === 'orders'" class="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8">
-		<h1 class="text-2xl font-semibold tracking-tight text-[#20231F]">Orders</h1>
-		<p class="mt-2 text-sm text-[#63685F]">Your order history will show up here.</p>
-	</section>
 }
 
 templ MessagesAdminContent() {

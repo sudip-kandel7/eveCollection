@@ -14,7 +14,7 @@ templ Esewa( amount string, taxAmount string, totalAmount string, transactionUUI
         <input type="hidden" name="product_delivery_charge" value={ productDeliveryCharge } />
 
         <input type="hidden" name="success_url" value="http://localhost:8080/payment/success" />
-        <input type="hidden" name="failure_url" value="http://localhost:8080/payment/failure" />
+        <input type="hidden" name="failure_url" value={ "http://localhost:8080/payment/failure?transaction_uuid=" + transactionUUID } />
 
         <input type="hidden" name="signed_field_names" value="total_amount,transaction_uuid,product_code" />
         <input type="hidden" name="signature" value={ signature } />

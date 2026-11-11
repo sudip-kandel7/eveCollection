@@ -648,6 +648,60 @@ func (q *Queries) GetOrderByTransactionUUID(ctx context.Context, transactionUuid
 	return i, err
 }
 
+const getOrderDetail = `-- name: GetOrderDetail :one
+SELECT
+    o.id,
+    o.status,
+    o.payment_method,
+    o.payment_status,
+    o.total_amount,
+    o.created_at AS date,
+    u.name AS customer_name,
+    o.delivery_phone,
+    o.delivery_address,
+    o.delivery_district
+FROM orders o
+JOIN users u ON u.id = o.customer_id
+WHERE o.id = $1::int
+  AND (o.customer_id = $2::int OR $2 IS NULL)
+`
+
+type GetOrderDetailParams struct {
+	OrderID    int32
+	CustomerID pgtype.Int4
+}
+
+type GetOrderDetailRow struct {
+	ID               int32
+	Status           string
+	PaymentMethod    string
+	PaymentStatus    string
+	TotalAmount      pgtype.Numeric
+	Date             pgtype.Timestamp
+	CustomerName     string
+	DeliveryPhone    string
+	DeliveryAddress  string
+	DeliveryDistrict string
+}
+
+func (q *Queries) GetOrderDetail(ctx context.Context, arg GetOrderDetailParams) (GetOrderDetailRow, error) {
+	row := q.db.QueryRow(ctx, getOrderDetail, arg.OrderID, arg.CustomerID)
+	var i GetOrderDetailRow
+	err := row.Scan(
+		&i.ID,
+		&i.Status,
+		&i.PaymentMethod,
+		&i.PaymentStatus,
+		&i.TotalAmount,
+		&i.Date,
+		&i.CustomerName,
+		&i.DeliveryPhone,
+		&i.DeliveryAddress,
+		&i.DeliveryDistrict,
+	)
+	return i, err
+}
+
 const getOrderForPayment = `-- name: GetOrderForPayment :one
 SELECT id, customer_id, status, total_amount, delivery_district, transaction_uuid
 FROM orders
@@ -675,6 +729,69 @@ func (q *Queries) GetOrderForPayment(ctx context.Context, id int32) (GetOrderFor
 		&i.TransactionUuid,
 	)
 	return i, err
+}
+
+const getOrderItems = `-- name: GetOrderItems :many
+SELECT
+    oi.id,
+    oi.variant_id,
+    oi.quantity,
+    oi.unit_price::float8 AS unit_price,
+    p.name AS product_name,
+    COALESCE(pv.size, '') AS size,
+    COALESCE(pv.color, '') AS color,
+    COALESCE((
+        SELECT pi.image_url
+        FROM product_images pi
+        WHERE pi.product_id = p.id
+        ORDER BY pi.sort_order ASC, pi.id ASC
+        LIMIT 1
+    ), '')::text AS image_url
+FROM order_items oi
+JOIN product_variants pv ON pv.id = oi.variant_id
+JOIN products p ON p.id = pv.product_id
+WHERE oi.order_id = $1::int
+ORDER BY oi.id ASC
+`
+
+type GetOrderItemsRow struct {
+	ID          int32
+	VariantID   int32
+	Quantity    int32
+	UnitPrice   float64
+	ProductName string
+	Size        string
+	Color       string
+	ImageUrl    string
+}
+
+func (q *Queries) GetOrderItems(ctx context.Context, orderID int32) ([]GetOrderItemsRow, error) {
+	rows, err := q.db.Query(ctx, getOrderItems, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetOrderItemsRow
+	for rows.Next() {
+		var i GetOrderItemsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.VariantID,
+			&i.Quantity,
+			&i.UnitPrice,
+			&i.ProductName,
+			&i.Size,
+			&i.Color,
+			&i.ImageUrl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getOrderItemsForPayment = `-- name: GetOrderItemsForPayment :many
@@ -705,6 +822,52 @@ func (q *Queries) GetOrderItemsForPayment(ctx context.Context, orderID int32) ([
 			&i.Quantity,
 			&i.UnitPrice,
 			&i.ProductID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getOrders = `-- name: GetOrders :many
+
+SELECT o.id, o.created_at AS date, o.status, o.payment_status, o.payment_method, o.total_amount, COALESCE(SUM(oi.quantity), 0)::bigint AS total_items FROM orders o
+LEFT JOIN order_items oi ON oi.order_id = o.id
+WHERE (o.customer_id = $1::int OR $1 IS NULL)
+GROUP BY o.id ORDER BY o.created_at DESC
+`
+
+type GetOrdersRow struct {
+	ID            int32
+	Date          pgtype.Timestamp
+	Status        string
+	PaymentStatus string
+	PaymentMethod string
+	TotalAmount   pgtype.Numeric
+	TotalItems    int64
+}
+
+func (q *Queries) GetOrders(ctx context.Context, customerID pgtype.Int4) ([]GetOrdersRow, error) {
+	rows, err := q.db.Query(ctx, getOrders, customerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetOrdersRow
+	for rows.Next() {
+		var i GetOrdersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Date,
+			&i.Status,
+			&i.PaymentStatus,
+			&i.PaymentMethod,
+			&i.TotalAmount,
+			&i.TotalItems,
 		); err != nil {
 			return nil, err
 		}
@@ -1798,6 +1961,38 @@ func (q *Queries) UpdateCategoryWithImage(ctx context.Context, arg UpdateCategor
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const updateOrderPaymentStatus = `-- name: UpdateOrderPaymentStatus :exec
+UPDATE orders
+SET payment_status = $2, updated_at = NOW()
+WHERE id = $1
+`
+
+type UpdateOrderPaymentStatusParams struct {
+	ID            int32
+	PaymentStatus string
+}
+
+func (q *Queries) UpdateOrderPaymentStatus(ctx context.Context, arg UpdateOrderPaymentStatusParams) error {
+	_, err := q.db.Exec(ctx, updateOrderPaymentStatus, arg.ID, arg.PaymentStatus)
+	return err
+}
+
+const updateOrderStatus = `-- name: UpdateOrderStatus :exec
+UPDATE orders
+SET status = $2, updated_at = NOW()
+WHERE id = $1
+`
+
+type UpdateOrderStatusParams struct {
+	ID     int32
+	Status string
+}
+
+func (q *Queries) UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) error {
+	_, err := q.db.Exec(ctx, updateOrderStatus, arg.ID, arg.Status)
+	return err
 }
 
 const updateProduct = `-- name: UpdateProduct :one
