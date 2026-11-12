@@ -1,0 +1,117 @@
+package views
+
+import (
+	"strconv"
+
+	"github.com/sudip-kandel7/eveCollection/internal/db"
+	"github.com/sudip-kandel7/eveCollection/internal/orderflow"
+)
+
+templ AdminOrderStatusBadge(elementID, status string) {
+	<span id={ elementID } class={ "rounded-full px-3 py-1 text-xs font-semibold " + orderStatusClass(status) }>
+		{ orderStatusLabel(status) }
+	</span>
+}
+
+templ AdminPaymentStatusBadge(elementID, status string) {
+	<span id={ elementID } class={ "rounded-full px-3 py-1 text-xs font-semibold " + paymentStatusClass(status) }>
+		{ paymentStatusLabel(status) }
+	</span>
+}
+
+templ AdminOrderStatusControl(orderID int32, status string) {
+	if statuses := orderflow.NextStatuses(status); len(statuses) > 0 {
+		<select
+			id={ "admin-order-status-" + strconv.Itoa(int(orderID)) }
+			data-on:change={ "@post('/admin/orders/" + strconv.Itoa(int(orderID)) + "/status?status=' + evt.target.value)" }
+			class="rounded-xl border border-[#DFE5DA] bg-white px-3 py-1.5 text-xs font-semibold text-[#283B28] outline-none transition hover:bg-[#F7F8F5] focus:border-[#283B28]"
+		>
+			<option value={ status } selected>{ orderStatusLabel(status) }</option>
+			for _, next := range statuses {
+				<option value={ next }>{ orderStatusLabel(next) }</option>
+			}
+		</select>
+	} else {
+		@AdminOrderStatusBadge("admin-order-status-"+strconv.Itoa(int(orderID)), status)
+	}
+}
+
+templ AdminPaymentStatusControl(orderID int32, status string) {
+	if status == "pending" {
+		<select
+			id={ "admin-payment-status-" + strconv.Itoa(int(orderID)) }
+			data-on:change={ "@post('/admin/orders/" + strconv.Itoa(int(orderID)) + "/payment-status?payment_status=' + evt.target.value)" }
+			class="rounded-xl border border-[#DFE5DA] bg-white px-3 py-1.5 text-xs font-semibold text-[#283B28] outline-none transition hover:bg-[#F7F8F5] focus:border-[#283B28]"
+		>
+			<option value="pending" selected>Pending</option>
+			<option value="paid">Paid</option>
+		</select>
+	} else {
+		@AdminPaymentStatusBadge("admin-payment-status-"+strconv.Itoa(int(orderID)), status)
+	}
+}
+
+templ AdminOrdersPage(orders []db.GetOrdersRow) {
+	<section data-signals:order-modal-open=false class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8">
+		<h1 class="text-2xl font-semibold tracking-tight text-[#20231F]">Orders</h1>
+		<p class="mt-2 text-sm text-[#63685F]">All customer orders will show up here.</p>
+
+		if len(orders) == 0 {
+			<div class="mt-6 rounded-2xl border border-dashed border-[#DCE2D7] bg-white px-6 py-14 text-center">
+				<p class="text-base font-semibold text-[#20231F]">No orders yet</p>
+				<p class="mt-1 text-sm text-[#63685F]">When customers place orders, they will show up here.</p>
+			</div>
+		} else {
+			<div class="mt-6 overflow-x-auto rounded-2xl border border-[#E5E8DF] bg-white">
+				<table class="min-w-full divide-y divide-[#E5E8DF] text-left text-sm">
+					<thead class="bg-[#F7F8F5] text-[11px] font-semibold uppercase tracking-wide text-[#8A9285]">
+						<tr>
+							<th class="whitespace-nowrap px-4 py-3">Order</th>
+							<th class="whitespace-nowrap px-4 py-3">Date</th>
+							<th class="whitespace-nowrap px-4 py-3">Items</th>
+							<th class="whitespace-nowrap px-4 py-3">Total</th>
+							<th class="whitespace-nowrap px-4 py-3">Order status</th>
+							<th class="whitespace-nowrap px-4 py-3">Payment method</th>
+							<th class="whitespace-nowrap px-4 py-3">Payment status</th>
+							<th class="whitespace-nowrap px-4 py-3"></th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-[#E5E8DF] text-[#20231F]">
+						for _, o := range orders {
+							<tr class="align-middle">
+								<td class="whitespace-nowrap px-4 py-3 font-semibold">#{ strconv.Itoa(int(o.ID)) }</td>
+								<td class="whitespace-nowrap px-4 py-3 text-[#63685F]">{ formatDate(o.Date) }</td>
+								<td class="whitespace-nowrap px-4 py-3 text-[#63685F]">{ strconv.Itoa(int(o.TotalItems)) }</td>
+								<td class="whitespace-nowrap px-4 py-3 font-semibold">{ formatNumericPrice(o.TotalAmount) }</td>
+								<td class="whitespace-nowrap px-4 py-3">
+									@AdminOrderStatusControl(o.ID, o.Status)
+								</td>
+								<td class="whitespace-nowrap px-4 py-3 text-[#63685F]">{ paymentMethodLabel(o.PaymentMethod) }</td>
+								<td class="whitespace-nowrap px-4 py-3">
+									@AdminPaymentStatusControl(o.ID, o.PaymentStatus)
+								</td>
+								<td class="whitespace-nowrap px-4 py-3 text-right">
+									<button
+										type="button"
+										data-on:click={ "$orderModalOpen = true; @get('/admin/orders/" + strconv.Itoa(int(o.ID)) + "')" }
+										class="rounded-lg border border-[#DFE5DA] bg-white px-3 py-1.5 text-xs font-semibold text-[#283B28] transition hover:bg-[#F0EFE9]"
+									>
+										View
+									</button>
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		}
+
+		<div id="order-model"></div>
+	</section>
+}
+
+templ AdminOrdersRenderer(user *db.User, orders []db.GetOrdersRow) {
+	@Html("Orders", user, "orders") {
+		@AdminOrdersPage(orders)
+	}
+}

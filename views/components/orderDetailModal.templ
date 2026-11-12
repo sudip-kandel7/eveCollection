@@ -1,0 +1,294 @@
+package components
+
+import (
+	"strconv"
+
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/sudip-kandel7/eveCollection/internal/db"
+)
+
+func formatDate(t pgtype.Timestamp) string {
+	if !t.Valid {
+		return "—"
+	}
+	return t.Time.Format("January 2, 2006")
+}
+
+func formatNumericPrice(amount pgtype.Numeric) string {
+	value, err := amount.Float64Value()
+	if err != nil {
+		return "0"
+	}
+
+	return formatPrice(value.Float64)
+}
+
+func formatPrice(price float64) string {
+	return "Rs. " + strconv.FormatFloat(price, 'f', -1, 64)
+}
+
+func orderStatusLabel(status string) string {
+	switch status {
+	case "pending":
+		return "Pending"
+	case "placed":
+		return "Placed"
+	case "packed":
+		return "Packed"
+	case "out_for_delivery":
+		return "Out for delivery"
+	case "delivered":
+		return "Delivered"
+	case "cancelled":
+		return "Cancelled"
+	default:
+		return status
+	}
+}
+
+func orderStatusClass(status string) string {
+	switch status {
+	case "pending":
+		return "bg-[#FEF3C7] text-[#92400E]"
+	case "placed":
+		return "bg-[#E0F2FE] text-[#075985]"
+	case "packed":
+		return "bg-[#F3E8FF] text-[#6B21A8]"
+	case "out_for_delivery":
+		return "bg-[#FFEDD5] text-[#9A3412]"
+	case "delivered":
+		return "bg-[#DCFCE7] text-[#166534]"
+	case "cancelled":
+		return "bg-[#FEE2E2] text-[#991B1B]"
+	default:
+		return "bg-[#F3F4F6] text-[#4B5563]"
+	}
+}
+
+func paymentMethodLabel(method string) string {
+	switch method {
+	case "cod":
+		return "Cash on delivery"
+	case "esewa":
+		return "eSewa"
+	default:
+		return method
+	}
+}
+
+func paymentStatusLabel(status string) string {
+	switch status {
+	case "paid":
+		return "Paid"
+	case "failed":
+		return "Failed"
+	case "pending":
+		return "Pending"
+	default:
+		return status
+	}
+}
+
+func paymentStatusClass(status string) string {
+	switch status {
+	case "paid":
+		return "bg-[#DCFCE7] text-[#166534]"
+	case "failed":
+		return "bg-[#FEE2E2] text-[#991B1B]"
+	case "pending":
+		return "bg-[#FEF3C7] text-[#92400E]"
+	default:
+		return "bg-[#F3F4F6] text-[#4B5563]"
+	}
+}
+
+templ orderStatusBadge(status string) {
+	<span class={ "rounded-full px-3 py-1 text-xs font-semibold " + orderStatusClass(status) }>
+		{ orderStatusLabel(status) }
+	</span>
+}
+
+templ paymentStatusBadge(status string) {
+	<span class={ "inline-flex rounded-full px-3 py-1 text-[11px] font-semibold " + paymentStatusClass(status) }>
+		{ paymentStatusLabel(status) }
+	</span>
+}
+
+func orderProgressStep(status string) int {
+	switch status {
+	case "placed":
+		return 0
+	case "packed":
+		return 1
+	case "out_for_delivery":
+		return 2
+	case "delivered":
+		return 3
+	default:
+		return -1
+	}
+}
+
+func progressCircleClass(status string, step int) string {
+	if step <= orderProgressStep(status) {
+		return "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#283B28] text-[11px] font-semibold text-white"
+	}
+
+	return "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#EAEDE6] text-[11px] font-semibold text-[#9CA394]"
+}
+
+func progressLabelClass(status string, step int) string {
+	if step <= orderProgressStep(status) {
+		return "mt-1.5 text-center text-[10px] font-semibold text-[#20231F]"
+	}
+
+	return "mt-1.5 text-center text-[10px] text-[#9CA394]"
+}
+
+func progressLineClass(status string, step int) string {
+	if step < orderProgressStep(status) {
+		return "h-px flex-1 bg-[#283B28]"
+	}
+
+	return "h-px flex-1 bg-[#E5E8DF]"
+}
+
+templ OrderDetailModal(order db.GetOrderDetailRow, items []db.GetOrderItemsRow) {
+	<div
+		data-show="$orderModalOpen"
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+	>
+		<div
+			data-on:click__outside="$orderModalOpen = false; closeOrderModal()"
+			class="max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl sm:p-6"
+		>
+			<div class="flex items-start justify-between">
+				<div>
+					<p class="text-[11px] font-bold uppercase tracking-[2.5px] text-[#8A9285]">
+						ORDER
+					</p>
+					<h2 class="mt-1 text-xl font-bold text-[#20231F]">
+						#{ strconv.Itoa(int(order.ID)) }
+					</h2>
+					<p class="mt-1 text-sm text-[#8A9285]">
+						{ formatDate(order.Date) }
+					</p>
+				</div>
+
+				<div class="flex items-center gap-3">
+					@orderStatusBadge(order.Status)
+					<button
+						type="button"
+						data-on:click="$orderModalOpen = false; closeOrderModal()"
+						class="flex h-7 w-7 items-center justify-center rounded-full text-lg text-[#8A9285] hover:bg-[#F3F5F0]"
+					>
+						×
+					</button>
+				</div>
+			</div>
+
+			<div class="mt-6 flex items-start">
+				<div class="flex w-0 flex-1 flex-col items-center">
+					<span class={ progressCircleClass(order.Status, 0) }>1</span>
+					<span class={ progressLabelClass(order.Status, 0) }>Placed</span>
+				</div>
+
+				<div class={ progressLineClass(order.Status, 0) + " mt-[11px]" }></div>
+
+				<div class="flex w-0 flex-1 flex-col items-center">
+					<span class={ progressCircleClass(order.Status, 1) }>2</span>
+					<span class={ progressLabelClass(order.Status, 1) }>Packed</span>
+				</div>
+
+				<div class={ progressLineClass(order.Status, 1) + " mt-[11px]" }></div>
+
+				<div class="flex w-0 flex-1 flex-col items-center">
+					<span class={ progressCircleClass(order.Status, 2) }>3</span>
+					<span class={ progressLabelClass(order.Status, 2) }>
+						Out for<br/>delivery
+					</span>
+				</div>
+
+				<div class={ progressLineClass(order.Status, 2) + " mt-[11px]" }></div>
+
+				<div class="flex w-0 flex-1 flex-col items-center">
+					<span class={ progressCircleClass(order.Status, 3) }>4</span>
+					<span class={ progressLabelClass(order.Status, 3) }>Delivered</span>
+				</div>
+			</div>
+
+			<div class="mt-5 grid grid-cols-2 gap-2">
+				<div class="rounded-xl bg-[#F3F5F0] p-3">
+					<p class="text-[11px] font-bold uppercase tracking-wide text-[#8A9285]">
+						DELIVERY
+					</p>
+					<div class="mt-2 space-y-1 text-sm text-[#20231F]">
+						<p class="font-semibold">{ order.CustomerName }</p>
+						<p>{ order.DeliveryPhone }</p>
+						<p>{ order.DeliveryAddress }</p>
+						<p>{ order.DeliveryDistrict }</p>
+					</div>
+				</div>
+
+				<div class="rounded-xl bg-[#F3F5F0] p-3">
+					<p class="text-[11px] font-bold uppercase tracking-wide text-[#8A9285]">
+						PAYMENT
+					</p>
+					<div class="mt-2 space-y-2 text-sm">
+						<p class="text-[#20231F]">
+							{ paymentMethodLabel(order.PaymentMethod) }
+						</p>
+						@paymentStatusBadge(order.PaymentStatus)
+						<p class="text-[13px] text-[#8A9285]">
+							{ strconv.Itoa(len(items)) } item(s)
+						</p>
+					</div>
+				</div>
+			</div>
+
+			<div class="mt-5 flex items-center justify-between">
+				<p class="text-[11px] font-bold uppercase tracking-wide text-[#8A9285]">
+					ITEMS
+				</p>
+				
+			</div>
+
+			<div class="mt-2 divide-y divide-[#E5E8DF]">
+				for _, item := range items {
+					<div class="flex items-center gap-3 py-3">
+						<img
+							src={ item.ImageUrl }
+							alt={ item.ProductName }
+							class="h-20 w-16 shrink-0 rounded-lg object-cover"
+						/>
+
+						<div class="min-w-0 flex-1">
+							<p class="truncate text-base font-semibold text-[#20231F]">
+								{ item.ProductName }
+							</p>
+							<p class="mt-1 text-[13px] text-[#63685F]">
+								{ item.Color + " / " + item.Size }
+							</p>
+							<p class="mt-1 text-[13px] text-[#8A9285]">
+								Qty { strconv.Itoa(int(item.Quantity)) } × { formatPrice(item.UnitPrice) }
+							</p>
+						</div>
+
+						<p class="shrink-0 text-sm font-bold text-[#283B28]">
+							{ formatPrice(item.UnitPrice * float64(item.Quantity)) }
+						</p>
+					</div>
+				}
+			</div>
+
+			<div class="mt-3 border-t border-[#E5E8DF] pt-4">
+				<div class="flex items-center justify-between">
+					<span class="text-base font-bold text-[#20231F]">Total</span>
+					<span class="text-lg font-bold text-[#283B28]">
+						{ formatNumericPrice(order.TotalAmount) }
+					</span>
+				</div>
+			</div>
+		</div>
+	</div>
+}

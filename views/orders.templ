@@ -1,0 +1,175 @@
+package views
+
+import (
+	"strconv"
+
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/sudip-kandel7/eveCollection/internal/db"
+)
+
+func formatDate(t pgtype.Timestamp) string {
+	if !t.Valid {
+		return "—"
+	}
+	return t.Time.Format("January 2, 2006")
+}
+
+func formatNumericPrice(amount pgtype.Numeric) string {
+	value, err := amount.Float64Value()
+	if err != nil {
+		return "0"
+	}
+
+	return formatPrice(value.Float64)
+}
+
+func orderStatusLabel(status string) string {
+	switch status {
+	case "pending":
+		return "Pending"
+	case "placed":
+		return "Placed"
+	case "packed":
+		return "Packed"
+	case "out_for_delivery":
+		return "Out for delivery"
+	case "delivered":
+		return "Delivered"
+	case "cancelled":
+		return "Cancelled"
+	default:
+		return status
+	}
+}
+
+func orderStatusClass(status string) string {
+	switch status {
+	case "pending":
+		return "bg-[#FEF3C7] text-[#92400E]"
+	case "placed":
+		return "bg-[#E0F2FE] text-[#075985]"
+	case "packed":
+		return "bg-[#F3E8FF] text-[#6B21A8]"
+	case "out_for_delivery":
+		return "bg-[#FFEDD5] text-[#9A3412]"
+	case "delivered":
+		return "bg-[#DCFCE7] text-[#166534]"
+	case "cancelled":
+		return "bg-[#FEE2E2] text-[#991B1B]"
+	default:
+		return "bg-[#F3F4F6] text-[#4B5563]"
+	}
+}
+
+func paymentMethodLabel(method string) string {
+	switch method {
+	case "cod":
+		return "Cash on delivery"
+	case "esewa":
+		return "eSewa"
+	default:
+		return method
+	}
+}
+
+func paymentStatusLabel(status string) string {
+	switch status {
+	case "paid":
+		return "Paid"
+	case "failed":
+		return "Failed"
+	case "pending":
+		return "Pending"
+	default:
+		return status
+	}
+}
+
+func paymentStatusClass(status string) string {
+	switch status {
+	case "paid":
+		return "bg-[#DCFCE7] text-[#166534]"
+	case "failed":
+		return "bg-[#FEE2E2] text-[#991B1B]"
+	case "pending":
+		return "bg-[#FEF3C7] text-[#92400E]"
+	default:
+		return "bg-[#F3F4F6] text-[#4B5563]"
+	}
+}
+
+templ OrdersPage(orders []db.GetOrdersRow) {
+	<section data-signals:order-modal-open=false class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8">
+		<h1 class="text-2xl font-semibold tracking-tight text-[#20231F]">Orders</h1>
+		<p class="mt-2 text-sm text-[#63685F]">Your order history will show up here.</p>
+
+		if len(orders) == 0 {
+			<div class="mt-6 rounded-2xl border border-dashed border-[#DCE2D7] bg-white px-6 py-14 text-center">
+				<p class="text-base font-semibold text-[#20231F]">You have not placed any orders yet</p>
+				<p class="mt-1 text-sm text-[#63685F]">When you place an order, it will show up here so you can track it.</p>
+				<a
+					href="/"
+					class="mt-5 inline-flex items-center justify-center rounded-full bg-[#283B28] px-5 py-2.5 text-sm font-semibold text-[#F7F8F5] transition hover:bg-[#20261F]"
+				>
+					Start shopping
+				</a>
+			</div>
+		} else {
+			<div class="mt-6 overflow-x-auto rounded-2xl border border-[#E5E8DF] bg-white">
+				<table class="min-w-full divide-y divide-[#E5E8DF] text-left text-sm">
+					<thead class="bg-[#F7F8F5] text-[11px] font-semibold uppercase tracking-wide text-[#8A9285]">
+						<tr>
+							<th class="whitespace-nowrap px-4 py-3">Order</th>
+							<th class="whitespace-nowrap px-4 py-3">Date</th>
+							<th class="whitespace-nowrap px-4 py-3">Items</th>
+							<th class="whitespace-nowrap px-4 py-3">Total</th>
+							<th class="whitespace-nowrap px-4 py-3">Order status</th>
+							<th class="whitespace-nowrap px-4 py-3">Payment method</th>
+							<th class="whitespace-nowrap px-4 py-3">Payment status</th>
+							<th class="whitespace-nowrap px-4 py-3"></th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-[#E5E8DF] text-[#20231F]">
+						for _, o := range orders {
+							<tr class="align-middle">
+								<td class="whitespace-nowrap px-4 py-3 font-semibold">#{ strconv.Itoa(int(o.ID)) }</td>
+								<td class="whitespace-nowrap px-4 py-3 text-[#63685F]">{ formatDate(o.Date) }</td>
+								<td class="whitespace-nowrap px-4 py-3 text-[#63685F]">{ strconv.Itoa(int(o.TotalItems)) }</td>
+								<td class="whitespace-nowrap px-4 py-3 font-semibold">{ formatNumericPrice(o.TotalAmount) }</td>
+								<td class="whitespace-nowrap px-4 py-3">
+									<span class={ "rounded-full px-3 py-1 text-xs font-semibold " + orderStatusClass(o.Status) }>
+										{ orderStatusLabel(o.Status) }
+									</span>
+								</td>
+								<td class="whitespace-nowrap px-4 py-3 text-[#63685F]">{ paymentMethodLabel(o.PaymentMethod) }</td>
+								<td class="whitespace-nowrap px-4 py-3">
+									<span class={ "rounded-full px-3 py-1 text-xs font-semibold " + paymentStatusClass(o.PaymentStatus) }>
+										{ paymentStatusLabel(o.PaymentStatus) }
+									</span>
+								</td>
+								<td class="whitespace-nowrap px-4 py-3 text-right">
+									<button
+										type="button"
+										data-on:click={ "$orderModalOpen = true; @get('/orders/" + strconv.Itoa(int(o.ID)) + "')" }
+										class="rounded-lg border border-[#DFE5DA] bg-white px-3 py-1.5 text-xs font-semibold text-[#283B28] transition hover:bg-[#F0EFE9]"
+									>
+										View
+									</button>
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		}
+
+		<div id="order-model"></div>
+		
+	</section>
+}
+
+templ OrdersRenderer(user *db.User, orders []db.GetOrdersRow) {
+	@Html("Orders", user, "orders") {
+		@OrdersPage(orders)
+	}
+}
