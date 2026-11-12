@@ -95,6 +95,7 @@ type ProductReview struct {
 	ReviewText pgtype.Text
 	CreatedAt  pgtype.Timestamp
 	UpdatedAt  pgtype.Timestamp
+	IsHidden   bool
 }
 
 type ProductStat struct {

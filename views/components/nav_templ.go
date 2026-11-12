@@ -118,12 +118,12 @@ func Nav(user *db.User, active string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if user.Role == "admin" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<a href=\"/admin/dashboard\" class=\"block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]\">Dashboard </a> <a href=\"/admin/orders\" class=\"block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]\">Orders </a>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<a href=\"/admin/dashboard\" class=\"block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]\">Dashboard </a> <a href=\"/admin/orders\" class=\"block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]\">Orders </a> <a href=\"/admin/messages\" class=\"block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]\">Messages </a>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<a href=\"/profile\" class=\"block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]\">Profile</a> <a href=\"/orders\" class=\"block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]\">My Orders</a>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<a href=\"/profile\" class=\"block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]\">Profile</a> <a href=\"/orders\" class=\"block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]\">My Orders</a> <a href=\"/messages\" class=\"block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]\">Messages</a>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

@@ -86,6 +86,9 @@ templ Nav(user *db.User, active string) {
                      <a href="/admin/orders"
                      class="block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]">
                     Orders </a>
+                     <a href="/admin/messages"
+                     class="block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]">
+                    Messages </a>
                   } else {
                     <a
                         href="/profile"
@@ -99,6 +102,13 @@ templ Nav(user *db.User, active string) {
                         class="block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]"
                     >
                         My Orders
+                    </a>
+
+                    <a
+                        href="/messages"
+                        class="block rounded-md px-3 py-2 text-sm text-[#596052] hover:bg-[#f1f3ee]"
+                    >
+                        Messages
                     </a>
                     
                   }

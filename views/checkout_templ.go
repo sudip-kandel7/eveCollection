@@ -57,7 +57,7 @@ func checkoutBackLabel(source string) string {
 }
 
 func checkoutBackHref(source string, products []db.GetProductByVariantIDRow) string {
-	if source == "cart" {
+	if source == "cart" || len(products) == 0 {
 		return "/cart"
 	}
 	return "/products/" + strconv.Itoa(int(products[0].ProductID))

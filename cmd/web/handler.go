@@ -23,6 +23,7 @@ import (
 	"github.com/starfederation/datastar-go/datastar"
 	"github.com/sudip-kandel7/eveCollection/internal/algorithms"
 	"github.com/sudip-kandel7/eveCollection/internal/db"
+	"github.com/sudip-kandel7/eveCollection/internal/orderflow"
 	"github.com/sudip-kandel7/eveCollection/internal/validator"
 	"github.com/sudip-kandel7/eveCollection/views"
 	"github.com/sudip-kandel7/eveCollection/views/components"
@@ -204,7 +205,28 @@ func (app *Application) ProductDetails(w http.ResponseWriter, r *http.Request) {
 		app.logger.Error("failed to record product view", "product_id", id, "error", err)
 	}
 
-	productReviews, err := app.queries.ListProductReviews(r.Context(), int32(id))
+	user := app.contextGetUser(r)
+	includeHidden := user != nil && user.Role == "admin"
+
+	var myReview *db.GetCustomerProductReviewRow
+	if user != nil {
+		review, err := app.queries.GetCustomerProductReview(r.Context(), db.GetCustomerProductReviewParams{
+			CustomerID: user.ID,
+			ProductID:  int32(id),
+		})
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			app.serverError(w, r, err)
+			return
+		}
+		if err == nil {
+			myReview = &review
+		}
+	}
+
+	productReviews, err := app.queries.ListProductReviews(r.Context(), db.ListProductReviewsParams{
+		ProductID:     int32(id),
+		IncludeHidden: includeHidden,
+	})
 	if err != nil {
 		app.serverError(w, r, err)
 		return
@@ -258,8 +280,6 @@ func (app *Application) ProductDetails(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := app.contextGetUser(r)
-
 	recommendations := algorithms.RecommendationPoints(recommendationFeatures, productTagIDs, productDetails.CategoryID, relatedLimit)
 
 	allCards, err := app.queries.ListProductsCard(r.Context(), db.ListProductsCardParams{
@@ -302,7 +322,7 @@ func (app *Application) ProductDetails(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	component := views.ProductDetailRenderer(user, productDetails, images, productReviews, variants, recommendedCards, canReview)
+	component := views.ProductDetailRenderer(user, productDetails, images, productReviews, variants, recommendedCards, canReview, myReview)
 
 	err = component.Render(r.Context(), w)
 	if err != nil {
@@ -351,15 +371,33 @@ func (app *Application) AddReview(w http.ResponseWriter, r *http.Request) {
 	form.CheckField(validator.MaxChars(form.ReviewText, maxReviewText), "review_text",
 		fmt.Sprintf("Review cannot exceed %d characters", maxReviewText))
 
-	delivered, err := app.queries.HasDeliveredProduct(r.Context(), db.HasDeliveredProductParams{
+	existingReview, err := app.queries.GetCustomerProductReview(r.Context(), db.GetCustomerProductReviewParams{
 		CustomerID: user.ID,
 		ProductID:  int32(productID),
 	})
-	if err != nil {
+	hasExistingReview := err == nil
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		app.serverError(w, r, err)
 		return
 	}
-	form.CheckField(delivered, "order", "You can review this product only after your order is delivered.")
+
+	if hasExistingReview && existingReview.IsHidden {
+		app.clientError(w, http.StatusForbidden)
+		return
+	}
+
+	delivered := false
+	if !hasExistingReview {
+		delivered, err = app.queries.HasDeliveredProduct(r.Context(), db.HasDeliveredProductParams{
+			CustomerID: user.ID,
+			ProductID:  int32(productID),
+		})
+		if err != nil {
+			app.serverError(w, r, err)
+			return
+		}
+		form.CheckField(delivered, "order", "You can review this product only after your order is delivered.")
+	}
 
 	if !form.Valid() {
 		sse := datastar.NewSSE(w, r)
@@ -368,7 +406,7 @@ func (app *Application) AddReview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = app.queries.CreateProductReview(r.Context(), db.CreateProductReviewParams{
+	_, err = app.queries.SaveProductReview(r.Context(), db.SaveProductReviewParams{
 		ProductID:  int32(productID),
 		CustomerID: user.ID,
 		Rating:     int32(rating),
@@ -385,7 +423,35 @@ func (app *Application) AddReview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	productReviews, err := app.queries.ListProductReviews(r.Context(), int32(productID))
+	productReviews, err := app.queries.ListProductReviews(r.Context(), db.ListProductReviewsParams{
+		ProductID:     int32(productID),
+		IncludeHidden: user.Role == "admin",
+	})
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	savedReview, err := app.queries.GetCustomerProductReview(r.Context(), db.GetCustomerProductReviewParams{
+		CustomerID: user.ID,
+		ProductID:  int32(productID),
+	})
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	signals, err := json.Marshal(struct {
+		ReviewRating     int32  `json:"reviewRating"`
+		ReviewHover      int    `json:"reviewHover"`
+		ReviewText       string `json:"reviewText"`
+		ReviewSubmitting bool   `json:"reviewSubmitting"`
+	}{
+		ReviewRating:     savedReview.Rating,
+		ReviewHover:      0,
+		ReviewText:       savedReview.ReviewText,
+		ReviewSubmitting: false,
+	})
 	if err != nil {
 		app.serverError(w, r, err)
 		return
@@ -393,8 +459,83 @@ func (app *Application) AddReview(w http.ResponseWriter, r *http.Request) {
 
 	sse := datastar.NewSSE(w, r)
 	sse.PatchElementTempl(views.RatingSummary(productDetails), datastar.WithSelectorID("rating-summary"), datastar.WithModeOuter())
-	sse.PatchElementTempl(views.ReviewSection(user, productDetails, productReviews, true), datastar.WithSelectorID("review-section"), datastar.WithModeOuter())
-	sse.PatchSignals([]byte(`{"reviewRating": 0, "reviewHover": 0, "reviewText": "", "reviewSubmitting": false}`))
+	sse.PatchElementTempl(views.ReviewSection(user, productDetails, productReviews, true, &savedReview), datastar.WithSelectorID("review-section"), datastar.WithModeOuter())
+	sse.PatchSignals(signals)
+}
+
+func (app *Application) AdminSetReviewHidden(w http.ResponseWriter, r *http.Request) {
+	id64, err := strconv.ParseInt(r.PathValue("id"), 10, 32)
+	if err != nil || id64 <= 0 {
+		app.clientError(w, http.StatusNotFound)
+		return
+	}
+	id := int32(id64)
+
+	review, err := app.queries.GetProductReview(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			app.clientError(w, http.StatusNotFound)
+			return
+		}
+		app.serverError(w, r, err)
+		return
+	}
+
+	if err := app.queries.SetProductReviewHidden(r.Context(), db.SetProductReviewHiddenParams{
+		ID:       id,
+		IsHidden: !review.IsHidden,
+	}); err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	user := app.contextGetUser(r)
+
+	var myReview *db.GetCustomerProductReviewRow
+	if user != nil {
+		userReview, err := app.queries.GetCustomerProductReview(r.Context(), db.GetCustomerProductReviewParams{
+			CustomerID: user.ID,
+			ProductID:  review.ProductID,
+		})
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			app.serverError(w, r, err)
+			return
+		}
+		if err == nil {
+			myReview = &userReview
+		}
+	}
+
+	productDetails, err := app.queries.GetProductDetail(r.Context(), review.ProductID)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	productReviews, err := app.queries.ListProductReviews(r.Context(), db.ListProductReviewsParams{
+		ProductID:     review.ProductID,
+		IncludeHidden: true,
+	})
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	canReview := false
+	if user != nil {
+		canReview, err = app.queries.HasDeliveredProduct(r.Context(), db.HasDeliveredProductParams{
+			CustomerID: user.ID,
+			ProductID:  review.ProductID,
+		})
+		if err != nil {
+			app.serverError(w, r, err)
+			return
+		}
+	}
+
+	sse := datastar.NewSSE(w, r)
+	sse.PatchElementTempl(views.RatingSummary(productDetails), datastar.WithSelectorID("rating-summary"), datastar.WithModeOuter())
+	sse.PatchElementTempl(views.ReviewSection(user, productDetails, productReviews, canReview, myReview), datastar.WithSelectorID("review-section"), datastar.WithModeOuter())
 }
 
 func (app *Application) AddToCart(w http.ResponseWriter, r *http.Request) {
@@ -516,7 +657,7 @@ func cartQuantityCount(items []db.GetCartItemsRow) int {
 func (app *Application) Profile(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r)
 
-	views.ProfileRenderer(user, "profile").Render(r.Context(), w)
+	views.ProfileRenderer(user).Render(r.Context(), w)
 }
 
 func (app *Application) About(w http.ResponseWriter, r *http.Request) {
@@ -656,6 +797,11 @@ func (app *Application) Checkout(w http.ResponseWriter, r *http.Request) {
 			products = append(products, product)
 		}
 
+	}
+
+	if len(products) == 0 {
+		http.Redirect(w, r, "/cart", http.StatusSeeOther)
+		return
 	}
 
 	if err := views.CheckoutRenderer(user, products, intent.Source).Render(r.Context(), w); err != nil {
@@ -1405,88 +1551,196 @@ func (app *Application) RemoveFromCart(w http.ResponseWriter, r *http.Request) {
 		datastar.WithSelectorID("cart-items"), datastar.WithModeOuter())
 }
 
-func (app *Application) Reviews(w http.ResponseWriter, r *http.Request) {
-	user := app.contextGetUser(r)
-
-	views.ProfileRenderer(user, "reviews").Render(r.Context(), w)
-}
-
 func (app *Application) Messages(w http.ResponseWriter, r *http.Request) {
 	user := app.contextGetUser(r)
 
-	views.ProfileRenderer(user, "messages").Render(r.Context(), w)
+	views.MessagesRenderer(user).Render(r.Context(), w)
+}
+
+func (app *Application) AdminMessages(w http.ResponseWriter, r *http.Request) {
+	user := app.contextGetUser(r)
+
+	views.AdminMessagesRenderer(user).Render(r.Context(), w)
 }
 
 func (app *Application) Order(w http.ResponseWriter, r *http.Request) {
-    user := app.contextGetUser(r)
+	user := app.contextGetUser(r)
 
-    id64, err := strconv.ParseInt(r.PathValue("id"), 10, 32)
-    if err != nil || id64 <= 0 {
-        app.clientError(w, http.StatusNotFound)
-        return
-    }
-    id := int32(id64)
+	id64, err := strconv.ParseInt(r.PathValue("id"), 10, 32)
+	if err != nil || id64 <= 0 {
+		app.clientError(w, http.StatusNotFound)
+		return
+	}
+	id := int32(id64)
 
-    order, err := app.queries.GetOrderDetail(r.Context(), db.GetOrderDetailParams{
-        OrderID: id, CustomerID: pgtype.Int4{Int32: user.ID, Valid: true},
-    })
-    if err != nil {
-        if errors.Is(err, pgx.ErrNoRows) {
-            app.clientError(w, http.StatusNotFound)
-            return
-        }
-        app.serverError(w, r, err)
-        return
-    }
+	order, err := app.queries.GetOrderDetail(r.Context(), db.GetOrderDetailParams{
+		OrderID: id, CustomerID: pgtype.Int4{Int32: user.ID, Valid: true},
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			app.clientError(w, http.StatusNotFound)
+			return
+		}
+		app.serverError(w, r, err)
+		return
+	}
 
-    items, err := app.queries.GetOrderItems(r.Context(), id)
-    if err != nil {
-        app.serverError(w, r, err)
-        return
-    }
+	items, err := app.queries.GetOrderItems(r.Context(), id)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
 
-    sse := datastar.NewSSE(w, r)
-    sse.PatchSignals([]byte(`{"orderModalOpen":true}`))
-    sse.PatchElementTempl(
-        components.OrderDetailModal(order, items),
-        datastar.WithSelectorID("order-model"),
-        datastar.WithModeInner(),
-    )
+	sse := datastar.NewSSE(w, r)
+	sse.PatchSignals([]byte(`{"orderModalOpen":true}`))
+	sse.PatchElementTempl(
+		components.OrderDetailModal(order, items),
+		datastar.WithSelectorID("order-model"),
+		datastar.WithModeInner(),
+	)
 }
 
 func (app *Application) AdminOrder(w http.ResponseWriter, r *http.Request) {
-    id64, err := strconv.ParseInt(r.PathValue("id"), 10, 32)
-    if err != nil || id64 <= 0 {
-        app.clientError(w, http.StatusNotFound)
-        return
-    }
-    id := int32(id64)
+	id64, err := strconv.ParseInt(r.PathValue("id"), 10, 32)
+	if err != nil || id64 <= 0 {
+		app.clientError(w, http.StatusNotFound)
+		return
+	}
+	id := int32(id64)
 
-    order, err := app.queries.GetOrderDetail(r.Context(), db.GetOrderDetailParams{
-        OrderID: id,
-    })
-    if err != nil {
-        if errors.Is(err, pgx.ErrNoRows) {
-            app.clientError(w, http.StatusNotFound)
-            return
-        }
-        app.serverError(w, r, err)
-        return
-    }
+	order, err := app.queries.GetOrderDetail(r.Context(), db.GetOrderDetailParams{
+		OrderID: id,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			app.clientError(w, http.StatusNotFound)
+			return
+		}
+		app.serverError(w, r, err)
+		return
+	}
 
-    items, err := app.queries.GetOrderItems(r.Context(), id)
-    if err != nil {
-        app.serverError(w, r, err)
-        return
-    }
+	items, err := app.queries.GetOrderItems(r.Context(), id)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
 
-    sse := datastar.NewSSE(w, r)
-    sse.PatchSignals([]byte(`{"orderModalOpen":true}`))
-    sse.PatchElementTempl(
-        components.OrderDetailModal(order, items),
-        datastar.WithSelectorID("order-model"),
-        datastar.WithModeInner(),
-    )
+	sse := datastar.NewSSE(w, r)
+	sse.PatchSignals([]byte(`{"orderModalOpen":true}`))
+	sse.PatchElementTempl(
+		components.OrderDetailModal(order, items),
+		datastar.WithSelectorID("order-model"),
+		datastar.WithModeInner(),
+	)
+}
+
+func (app *Application) AdminUpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
+	id64, err := strconv.ParseInt(r.PathValue("id"), 10, 32)
+	if err != nil || id64 <= 0 {
+		app.clientError(w, http.StatusNotFound)
+		return
+	}
+	id := int32(id64)
+
+	newStatus := strings.TrimSpace(r.URL.Query().Get("status"))
+	if newStatus == "" {
+		newStatus = strings.TrimSpace(r.FormValue("status"))
+	}
+
+	order, err := app.queries.GetOrderDetail(r.Context(), db.GetOrderDetailParams{OrderID: id})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			app.clientError(w, http.StatusNotFound)
+			return
+		}
+		app.serverError(w, r, err)
+		return
+	}
+
+	if !orderflow.CanTransition(order.Status, newStatus) {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	err = app.queries.UpdateOrderStatus(r.Context(), db.UpdateOrderStatusParams{
+		ID:     id,
+		Status: newStatus,
+	})
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	order.Status = newStatus
+	app.renderAdminOrderUpdate(w, r, order)
+}
+
+func (app *Application) AdminUpdateOrderPaymentStatus(w http.ResponseWriter, r *http.Request) {
+	id64, err := strconv.ParseInt(r.PathValue("id"), 10, 32)
+	if err != nil || id64 <= 0 {
+		app.clientError(w, http.StatusNotFound)
+		return
+	}
+	id := int32(id64)
+
+	newStatus := strings.TrimSpace(r.URL.Query().Get("payment_status"))
+	if newStatus == "" {
+		newStatus = strings.TrimSpace(r.FormValue("payment_status"))
+	}
+
+	order, err := app.queries.GetOrderDetail(r.Context(), db.GetOrderDetailParams{OrderID: id})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			app.clientError(w, http.StatusNotFound)
+			return
+		}
+		app.serverError(w, r, err)
+		return
+	}
+
+	if order.PaymentStatus != "pending" || (newStatus != "pending" && newStatus != "paid") {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	err = app.queries.UpdateOrderPaymentStatus(r.Context(), db.UpdateOrderPaymentStatusParams{
+		ID:            id,
+		PaymentStatus: newStatus,
+	})
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	order.PaymentStatus = newStatus
+	app.renderAdminOrderUpdate(w, r, order)
+}
+
+func (app *Application) renderAdminOrderUpdate(w http.ResponseWriter, r *http.Request, order db.GetOrderDetailRow) {
+	items, err := app.queries.GetOrderItems(r.Context(), order.ID)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	orderID := strconv.Itoa(int(order.ID))
+	sse := datastar.NewSSE(w, r)
+	sse.PatchElementTempl(
+		components.OrderDetailModal(order, items),
+		datastar.WithSelectorID("order-model"),
+		datastar.WithModeInner(),
+	)
+	sse.PatchElementTempl(
+		views.AdminOrderStatusControl(order.ID, order.Status),
+		datastar.WithSelectorID("admin-order-status-"+orderID),
+		datastar.WithModeReplace(),
+	)
+	sse.PatchElementTempl(
+		views.AdminPaymentStatusControl(order.ID, order.PaymentStatus),
+		datastar.WithSelectorID("admin-payment-status-"+orderID),
+		datastar.WithModeReplace(),
+	)
 }
 
 func (app *Application) Login(w http.ResponseWriter, r *http.Request) {
@@ -1897,7 +2151,7 @@ func (app *Application) updateProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sse := datastar.NewSSE(w, r)
-	sse.PatchElementTempl(views.ProfileRenderer(freshUser, "profile"))
+	sse.PatchElementTempl(views.ProfileRenderer(freshUser))
 	sse.PatchSignals([]byte(`{"updating": false}`))
 }
 

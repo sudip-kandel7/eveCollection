@@ -201,6 +201,13 @@ func reviewBasedOn(n int) string {
 	return "Based on " + reviewCountText(n)
 }
 
+func hideReviewTitle(hidden bool) string {
+	if hidden {
+		return "Unhide review"
+	}
+	return "Hide review"
+}
+
 func starFill(rating float64, index int) float64 {
 	fill := rating - float64(index-1)
 	if fill < 0 {
@@ -212,7 +219,21 @@ func starFill(rating float64, index int) float64 {
 	return fill
 }
 
-templ productDetail(user *db.User, productDetails db.GetProductDetailRow, images []string, productReviews []db.ListProductReviewsRow, variants []db.ListProductVariantsRow, productsCard []db.ListProductsCardRow, canReview bool) {
+func initialReviewRating(myReview *db.GetCustomerProductReviewRow) string {
+	if myReview == nil {
+		return "0"
+	}
+	return strconv.Itoa(int(myReview.Rating))
+}
+
+func initialReviewText(myReview *db.GetCustomerProductReviewRow) string {
+	if myReview == nil {
+		return "''"
+	}
+	return strconv.Quote(myReview.ReviewText)
+}
+
+templ productDetail(user *db.User, productDetails db.GetProductDetailRow, images []string, productReviews []db.ListProductReviewsRow, variants []db.ListProductVariantsRow, productsCard []db.ListProductsCardRow, canReview bool, myReview *db.GetCustomerProductReviewRow) {
 	<div
 		class="bg-[#F7F8F5]"
 		style="font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;"
@@ -222,9 +243,9 @@ templ productDetail(user *db.User, productDetails db.GetProductDetailRow, images
 		data-signals:selected-size={ strconv.Quote(initialVariantSize(variants)) }
 		data-signals:selected-color={ strconv.Quote(initialVariantColor(variants)) }
 		data-signals:quantity="1"
-		data-signals:review-rating="0"
+		data-signals:review-rating={ initialReviewRating(myReview) }
 		data-signals:review-hover="0"
-		data-signals:review-text="''"
+		data-signals:review-text={ initialReviewText(myReview) }
 		data-signals:review-submitting="false"
 		data-signals:cart-submitting="false"
 		data-signals:cart-message="''"
@@ -433,7 +454,7 @@ templ productDetail(user *db.User, productDetails db.GetProductDetailRow, images
 				</div>
 			</section>
 			<div class="mt-12 h-0.5 w-full bg-[#E5E8DF]"></div>
-			@ReviewSection(user, productDetails, productReviews, canReview)
+			@ReviewSection(user, productDetails, productReviews, canReview, myReview)
 			<div class="mt-14 h-0.5 w-full bg-[#E5E8DF]"></div>
 			<section class="mt-10">
 				<p class="text-xs font-bold uppercase tracking-[0.2em] text-[#6B7D60]">Picked for you</p>
@@ -460,7 +481,7 @@ templ RatingSummary(productDetails db.GetProductDetailRow) {
 	</div>
 }
 
-templ ReviewSection(user *db.User, productDetails db.GetProductDetailRow, productReviews []db.ListProductReviewsRow, canReview bool) {
+templ ReviewSection(user *db.User, productDetails db.GetProductDetailRow, productReviews []db.ListProductReviewsRow, canReview bool, myReview *db.GetCustomerProductReviewRow) {
 	<section id="review-section" class="mt-12 grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-14">
 		<div>
 			<p class="text-xs font-bold uppercase tracking-[0.2em] text-[#6B7D60]">Kind words</p>
@@ -478,7 +499,11 @@ templ ReviewSection(user *db.User, productDetails db.GetProductDetailRow, produc
 					<p class="mt-1 text-xs text-[#8A9285]">{ reviewBasedOn(int(productDetails.ReviewCount)) }</p>
 				</div>
 			</div>
-			if canReview {
+			if myReview != nil && myReview.IsHidden {
+				<div class="mt-6 rounded-2xl border border-[#E5E8DF] bg-white p-5 text-sm text-[#687064] sm:p-6">
+					Your review has been hidden by the admin. You cannot edit it until it is unhidden.
+				</div>
+			} else if myReview != nil || canReview {
 				<form
 					class="mt-6 rounded-2xl border border-[#E5E8DF] bg-white p-5 sm:p-6"
 					data-on:submit__prevent="$reviewSubmitting = true; @post('/addReview', {contentType: 'form'})"
@@ -486,7 +511,11 @@ templ ReviewSection(user *db.User, productDetails db.GetProductDetailRow, produc
 					<input type="hidden" name="product_id" value={ strconv.Itoa(int(productDetails.ID)) }/>
 					<input type="hidden" name="rating" value="0" data-attr:value="$reviewRating"/>
 					<p class="text-[10px] font-bold uppercase tracking-[0.2em] text-[#6B7D60]">
-						Share your experience
+						if myReview != nil {
+							Update your review
+						} else {
+							Share your experience
+						}
 					</p>
 					<p class="mt-5 text-sm font-medium text-[#20231F]">Your rating</p>
 					<div class="mt-2 flex items-center gap-1" data-on:mouseleave="$reviewHover = 0">
@@ -538,7 +567,11 @@ templ ReviewSection(user *db.User, productDetails db.GetProductDetailRow, produc
 						data-attr:disabled="$reviewRating < 1 || $reviewSubmitting"
 						class="mt-4 inline-flex items-center gap-2 rounded-full bg-[#283B28] px-5 py-2.5 text-sm font-semibold text-[#F7F8F5] transition hover:bg-[#20261F] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#283B28]"
 					>
-						Submit review
+						if myReview != nil {
+							Update review
+						} else {
+							Submit review
+						}
 						<svg
 							viewBox="0 0 24 24"
 							fill="none"
@@ -578,7 +611,36 @@ templ ReviewSection(user *db.User, productDetails db.GetProductDetailRow, produc
 										@reviewStar(starFill(float64(review.Rating), i))
 									}
 								</div>
-								<span class="text-xs text-[#8A9285]">{ formatDate(review.CreatedAt) }</span>
+								<div class="flex items-center gap-2">
+									if review.IsEdited {
+										<span class="rounded-full bg-[#E0F2FE] px-2.5 py-1 text-[11px] font-semibold text-[#075985]">Edited</span>
+									}
+									if review.IsHidden {
+										<span class="rounded-full bg-[#F3F4F6] px-2.5 py-1 text-[11px] font-semibold text-[#4B5563]">Hidden</span>
+									}
+									<span class="text-sm text-[#8A9285]">{ formatDate(review.CreatedAt) }</span>
+									if user != nil && user.Role == "admin" {
+										<button
+											type="button"
+											data-on:click={ "@post('/admin/reviews/" + strconv.Itoa(int(review.ID)) + "')" }
+											title={ hideReviewTitle(review.IsHidden) }
+											aria-label={ hideReviewTitle(review.IsHidden) }
+											class="rounded-md p-1.5 text-[#8A9285] transition hover:bg-[#F3F5F0] hover:text-[#20231F]"
+										>
+											if review.IsHidden {
+												<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5" aria-hidden="true">
+													<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+													<circle cx="12" cy="12" r="3"></circle>
+												</svg>
+											} else {
+												<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5" aria-hidden="true">
+													<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+													<path d="M1 1l22 22"></path>
+												</svg>
+											}
+										</button>
+									}
+								</div>
 							</div>
 							if review.ReviewText != "" {
 								<p class="mt-3 text-sm leading-relaxed text-[#4A5443]">{ review.ReviewText }</p>
@@ -619,8 +681,8 @@ templ reviewStar(fill float64) {
 	</span>
 }
 
-templ ProductDetailRenderer(user *db.User, productDetails db.GetProductDetailRow, images []string, productReviews []db.ListProductReviewsRow, variants []db.ListProductVariantsRow, productsCard []db.ListProductsCardRow, canReview bool) {
+templ ProductDetailRenderer(user *db.User, productDetails db.GetProductDetailRow, images []string, productReviews []db.ListProductReviewsRow, variants []db.ListProductVariantsRow, productsCard []db.ListProductsCardRow, canReview bool, myReview *db.GetCustomerProductReviewRow) {
 	@Html(productDetails.Name+" | Eve Collection", user, "home") {
-		@productDetail(user, productDetails, images, productReviews, variants, productsCard, canReview)
+		@productDetail(user, productDetails, images, productReviews, variants, productsCard, canReview, myReview)
 	}
 }

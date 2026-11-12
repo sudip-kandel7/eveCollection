@@ -4,52 +4,19 @@ import (
 	"github.com/sudip-kandel7/eveCollection/internal/db"
 )
 
-templ profile(user *db.User, tab string) {
-	<div class="mx-auto flex w-full flex-1 flex-col lg:flex-row" data-signals:activetab={ "'" + tab + "'" }>
-
-		<aside class="w-full shrink-0 border-b border-gray-200 bg-white lg:w-64 lg:border-b-0 lg:border-r">
-			<div class="px-4 py-4 sm:px-6 sm:py-6 lg:px-6 lg:py-8">
-				<h2 class="text-lg font-semibold text-gray-900">
-					My Account
-				</h2>
-				<p class="mt-1 text-sm text-gray-500">
-					Manage your account
-				</p>
-			</div>
-
-			<nav class="flex flex-wrap gap-2 px-3 pb-2 lg:block lg:px-3 lg:pb-0">
-				@accountNavLink("profile", "Profile")
-				@accountNavLink("messages", "Messages")
-				@accountNavLink("reviews", "Reviews")
-			</nav>
-		</aside>
-
-		<div class="flex-1">
-			@profileContent(user)
-			@messagesContent()
-			@reviewsContent()
-		</div>
+templ profile(user *db.User) {
+	<div class="mx-auto w-full max-w-7xl flex-1">
+		@profileContent(user)
 	</div>
-}
-
-templ accountNavLink(tab, label string) {
-	
-	<a	href="#"
-		data-on:click__prevent={ "$activetab = '" + tab + "'" }
-		data-attr:class={ "$activetab === '" + tab + "' ? 'mt-0 block shrink-0 whitespace-nowrap rounded-lg bg-gray-100 px-4 py-3 text-sm font-medium text-gray-900' : 'mt-0 block shrink-0 whitespace-nowrap rounded-lg px-4 py-3 text-sm text-gray-600 transition hover:bg-gray-100 lg:mt-1'" }
-	>
-		{ label }
-	</a>
 }
 
 templ profileContent(user *db.User) {
 	<section
 		id="profile-content"
-		data-show="$activetab === 'profile'" 
 		class="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8"
 		data-signals:updating="false"
 	>
-		<div class="max-w-4xl">
+		<div class="mx-auto max-w-4xl">
 
 			<div class="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
 				<div>
@@ -178,23 +145,9 @@ templ profileContent(user *db.User) {
 }
 
 
-templ messagesContent() {
-	<section data-show="$activetab === 'messages'" class="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8">
-		<h1 class="text-2xl font-semibold tracking-tight text-[#20231F]">Messages</h1>
-		<p class="mt-2 text-sm text-[#63685F]">Your conversations will show up here.</p>
-	</section>
-}
-
-templ reviewsContent() {
-	<section data-show="$activetab === 'reviews'" class="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-8">
-		<h1 class="text-2xl font-semibold tracking-tight text-[#20231F]">My reviews</h1>
-		<p class="mt-2 text-sm text-[#63685F]">Reviews you've written will show up here.</p>
-	</section>
-}
-
-templ ProfileRenderer(user *db.User, tab string) {
+templ ProfileRenderer(user *db.User) {
 	@Html("Profile", user, "profile"){
-		@profile(user, tab)
+		@profile(user)
 	}
 }
 

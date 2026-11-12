@@ -37,14 +37,14 @@ func login(form LoginFormData) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"relative flex min-h-screen items-center justify-center overflow-hidden bg-[#F7F8F5] px-4 sm:px-6\"><div class=\"pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-[#E6F4A5] opacity-50 blur-3xl\"></div><div class=\"pointer-events-none absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-[#D8E9CF] opacity-60 blur-3xl\"></div><div class=\"relative w-full max-w-md\"><div class=\"rounded-[24px] border border-[#E5E8DF] bg-white px-5 pt-6 pb-5 shadow-sm sm:px-10 sm:pt-10 sm:pb-6\"><span class=\"block text-xs font-semibold uppercase tracking-[0.16em] text-[#63685F]\">Welcome back</span><h1 class=\"mt-2 text-2xl font-bold text-[#20231F]\">Sign in to eve Collection</h1><div id=\"err-nonfield\"></div><form class=\"mt-3 flex flex-col gap-5\" data-on:submit__prevent=\"@post('/login', {contentType: 'form'})\"><div><label for=\"identifier\" class=\"mb-1.5 block text-sm font-medium text-[#20231F]\">Phone or email</label> <input id=\"identifier\" name=\"identifier\" type=\"text\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"relative flex min-h-screen items-center justify-center overflow-hidden bg-[#F7F8F5] px-4 sm:px-6\"><div class=\"pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-[#E6F4A5] opacity-50 blur-3xl\"></div><div class=\"pointer-events-none absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-[#D8E9CF] opacity-60 blur-3xl\"></div><div class=\"relative w-full max-w-md\"><div class=\"rounded-[24px] border border-[#E5E8DF] bg-white px-5 pt-6 pb-5 shadow-sm sm:px-10 sm:pt-10 sm:pb-6\"><span class=\"block text-xs font-semibold uppercase tracking-[0.16em] text-[#63685F]\">Welcome back</span><h1 class=\"mt-2 text-2xl font-bold text-[#20231F]\">Sign in to eve Collection</h1><div id=\"err-nonfield\"></div><form class=\"mt-3 flex flex-col gap-5\" data-on:submit__prevent=\"@post('/login', {contentType: 'form'})\"><div><label for=\"identifier\" class=\"mb-1.5 block text-sm font-medium text-[#20231F]\">Phone or email</label> <input id=\"identifier\" name=\"identifier\" type=\"text\" autocomplete=\"username\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(form.Identifier)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/login.templ`, Line: 38, Col: 29}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/login.templ`, Line: 39, Col: 29}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {

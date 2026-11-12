@@ -247,39 +247,6 @@ func (q *Queries) CreateProductImage(ctx context.Context, arg CreateProductImage
 	return err
 }
 
-const createProductReview = `-- name: CreateProductReview :one
-INSERT INTO product_reviews (product_id, customer_id, rating, review_text)
-VALUES ($1, $2, $3, $4)
-RETURNING id, product_id, customer_id, rating, review_text, created_at, updated_at
-`
-
-type CreateProductReviewParams struct {
-	ProductID  int32
-	CustomerID int32
-	Rating     int32
-	ReviewText pgtype.Text
-}
-
-func (q *Queries) CreateProductReview(ctx context.Context, arg CreateProductReviewParams) (ProductReview, error) {
-	row := q.db.QueryRow(ctx, createProductReview,
-		arg.ProductID,
-		arg.CustomerID,
-		arg.Rating,
-		arg.ReviewText,
-	)
-	var i ProductReview
-	err := row.Scan(
-		&i.ID,
-		&i.ProductID,
-		&i.CustomerID,
-		&i.Rating,
-		&i.ReviewText,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const createProductTag = `-- name: CreateProductTag :exec
 INSERT INTO product_tags (product_id, tag_id) VALUES ($1, $2)
 `
@@ -581,6 +548,53 @@ func (q *Queries) GetCategoryProductIDs(ctx context.Context, id int32) ([]int32,
 		return nil, err
 	}
 	return items, nil
+}
+
+const getCustomerProductReview = `-- name: GetCustomerProductReview :one
+SELECT
+    id,
+    product_id,
+    customer_id,
+    rating,
+    COALESCE(review_text, '')::text AS review_text,
+    is_hidden,
+    created_at,
+    updated_at
+FROM product_reviews
+WHERE customer_id = $1
+  AND product_id = $2
+`
+
+type GetCustomerProductReviewParams struct {
+	CustomerID int32
+	ProductID  int32
+}
+
+type GetCustomerProductReviewRow struct {
+	ID         int32
+	ProductID  int32
+	CustomerID int32
+	Rating     int32
+	ReviewText string
+	IsHidden   bool
+	CreatedAt  pgtype.Timestamp
+	UpdatedAt  pgtype.Timestamp
+}
+
+func (q *Queries) GetCustomerProductReview(ctx context.Context, arg GetCustomerProductReviewParams) (GetCustomerProductReviewRow, error) {
+	row := q.db.QueryRow(ctx, getCustomerProductReview, arg.CustomerID, arg.ProductID)
+	var i GetCustomerProductReviewRow
+	err := row.Scan(
+		&i.ID,
+		&i.ProductID,
+		&i.CustomerID,
+		&i.Rating,
+		&i.ReviewText,
+		&i.IsHidden,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const getOrderByCustomer = `-- name: GetOrderByCustomer :one
@@ -972,12 +986,12 @@ SELECT
     COALESCE((
         SELECT AVG(pr.rating)
         FROM product_reviews pr
-        WHERE pr.product_id = p.id
+        WHERE pr.product_id = p.id AND pr.is_hidden = FALSE
     ), 0)::float8 AS rating,
     (
         SELECT COUNT(*)
         FROM product_reviews pr
-        WHERE pr.product_id = p.id
+        WHERE pr.product_id = p.id AND pr.is_hidden = FALSE
     )::int AS review_count,
     COALESCE((
         SELECT SUM(pv.stock)
@@ -1044,6 +1058,47 @@ func (q *Queries) GetProductIDsByTagIDs(ctx context.Context, tagsIds []int32) ([
 	return items, nil
 }
 
+const getProductReview = `-- name: GetProductReview :one
+SELECT
+    id,
+    product_id,
+    customer_id,
+    rating,
+    COALESCE(review_text, '')::text AS review_text,
+    is_hidden,
+    created_at,
+    updated_at
+FROM product_reviews
+WHERE id = $1
+`
+
+type GetProductReviewRow struct {
+	ID         int32
+	ProductID  int32
+	CustomerID int32
+	Rating     int32
+	ReviewText string
+	IsHidden   bool
+	CreatedAt  pgtype.Timestamp
+	UpdatedAt  pgtype.Timestamp
+}
+
+func (q *Queries) GetProductReview(ctx context.Context, id int32) (GetProductReviewRow, error) {
+	row := q.db.QueryRow(ctx, getProductReview, id)
+	var i GetProductReviewRow
+	err := row.Scan(
+		&i.ID,
+		&i.ProductID,
+		&i.CustomerID,
+		&i.Rating,
+		&i.ReviewText,
+		&i.IsHidden,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getProductTagIDs = `-- name: GetProductTagIDs :one
 SELECT ARRAY(
     SELECT pt.tag_id
@@ -1074,14 +1129,14 @@ SELECT
         (
             SELECT AVG(pr.rating)
             FROM product_reviews pr
-            WHERE pr.product_id = p.id
+            WHERE pr.product_id = p.id AND pr.is_hidden = FALSE
         ),
         0
     )::float8 AS rating,
     (
         SELECT COUNT(*)
         FROM product_reviews pr
-        WHERE pr.product_id = p.id
+        WHERE pr.product_id = p.id AND pr.is_hidden = FALSE
     )::int AS review_count,
     COALESCE(
         (
@@ -1465,24 +1520,36 @@ SELECT
     pr.id,
     pr.rating,
     COALESCE(pr.review_text, '')::text AS review_text,
+    pr.is_hidden,
     pr.created_at,
+    pr.updated_at,
+    (pr.updated_at > pr.created_at) AS is_edited,
     u.name AS customer_name
 FROM product_reviews pr
 JOIN users u ON u.id = pr.customer_id
-WHERE pr.product_id = $1
-ORDER BY pr.created_at DESC
+WHERE pr.product_id = $1::int
+  AND ($2::bool OR pr.is_hidden = FALSE)
+ORDER BY pr.is_hidden ASC, pr.created_at DESC
 `
+
+type ListProductReviewsParams struct {
+	ProductID     int32
+	IncludeHidden bool
+}
 
 type ListProductReviewsRow struct {
 	ID           int32
 	Rating       int32
 	ReviewText   string
+	IsHidden     bool
 	CreatedAt    pgtype.Timestamp
+	UpdatedAt    pgtype.Timestamp
+	IsEdited     bool
 	CustomerName string
 }
 
-func (q *Queries) ListProductReviews(ctx context.Context, productID int32) ([]ListProductReviewsRow, error) {
-	rows, err := q.db.Query(ctx, listProductReviews, productID)
+func (q *Queries) ListProductReviews(ctx context.Context, arg ListProductReviewsParams) ([]ListProductReviewsRow, error) {
+	rows, err := q.db.Query(ctx, listProductReviews, arg.ProductID, arg.IncludeHidden)
 	if err != nil {
 		return nil, err
 	}
@@ -1494,7 +1561,10 @@ func (q *Queries) ListProductReviews(ctx context.Context, productID int32) ([]Li
 			&i.ID,
 			&i.Rating,
 			&i.ReviewText,
+			&i.IsHidden,
 			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.IsEdited,
 			&i.CustomerName,
 		); err != nil {
 			return nil, err
@@ -1686,8 +1756,8 @@ WITH cards AS (
     SELECT p.id, p.name, c.name AS category_name, p.category_id, p.created_at,
         p.base_price::float8 AS price,
         COALESCE((SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.sort_order ASC LIMIT 1), '') AS cover_image,
-        COALESCE((SELECT AVG(pr.rating) FROM product_reviews pr WHERE pr.product_id = p.id), 0)::float8 AS rating,
-        (SELECT COUNT(*) FROM product_reviews pr WHERE pr.product_id = p.id)::int AS review_count,
+        COALESCE((SELECT AVG(pr.rating) FROM product_reviews pr WHERE pr.product_id = p.id AND pr.is_hidden = FALSE), 0)::float8 AS rating,
+        (SELECT COUNT(*) FROM product_reviews pr WHERE pr.product_id = p.id AND pr.is_hidden = FALSE)::int AS review_count,
         COALESCE((SELECT SUM(oi.quantity) FROM order_items oi JOIN product_variants pv ON pv.id = oi.variant_id JOIN orders o ON o.id = oi.order_id WHERE pv.product_id = p.id AND o.status <> 'cancelled'), 0)::int AS sold,
         COALESCE((SELECT SUM(pv.stock) FROM product_variants pv WHERE pv.product_id = p.id), 0)::int AS stock,
         LOWER(
@@ -1873,6 +1943,72 @@ type RemoveCartItemParams struct {
 
 func (q *Queries) RemoveCartItem(ctx context.Context, arg RemoveCartItemParams) error {
 	_, err := q.db.Exec(ctx, removeCartItem, arg.CustomerID, arg.VariantID)
+	return err
+}
+
+const saveProductReview = `-- name: SaveProductReview :one
+INSERT INTO product_reviews (product_id, customer_id, rating, review_text)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (customer_id, product_id)
+DO UPDATE SET
+    rating = EXCLUDED.rating,
+    review_text = EXCLUDED.review_text,
+    updated_at = NOW()
+RETURNING id, product_id, customer_id, rating, review_text, is_hidden, created_at, updated_at
+`
+
+type SaveProductReviewParams struct {
+	ProductID  int32
+	CustomerID int32
+	Rating     int32
+	ReviewText pgtype.Text
+}
+
+type SaveProductReviewRow struct {
+	ID         int32
+	ProductID  int32
+	CustomerID int32
+	Rating     int32
+	ReviewText pgtype.Text
+	IsHidden   bool
+	CreatedAt  pgtype.Timestamp
+	UpdatedAt  pgtype.Timestamp
+}
+
+func (q *Queries) SaveProductReview(ctx context.Context, arg SaveProductReviewParams) (SaveProductReviewRow, error) {
+	row := q.db.QueryRow(ctx, saveProductReview,
+		arg.ProductID,
+		arg.CustomerID,
+		arg.Rating,
+		arg.ReviewText,
+	)
+	var i SaveProductReviewRow
+	err := row.Scan(
+		&i.ID,
+		&i.ProductID,
+		&i.CustomerID,
+		&i.Rating,
+		&i.ReviewText,
+		&i.IsHidden,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const setProductReviewHidden = `-- name: SetProductReviewHidden :exec
+UPDATE product_reviews
+SET is_hidden = $2
+WHERE id = $1
+`
+
+type SetProductReviewHiddenParams struct {
+	ID       int32
+	IsHidden bool
+}
+
+func (q *Queries) SetProductReviewHidden(ctx context.Context, arg SetProductReviewHiddenParams) error {
+	_, err := q.db.Exec(ctx, setProductReviewHidden, arg.ID, arg.IsHidden)
 	return err
 }
 

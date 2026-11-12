@@ -7,20 +7,18 @@ CREATE TABLE users (
     salt          VARCHAR(255) NOT NULL,
     role          VARCHAR(20) NOT NULL DEFAULT 'customer', 
     is_active     BOOLEAN NOT NULL DEFAULT TRUE,
+    address       TEXT NOT NULL DEFAULT '',
     created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
--- CREATE TABLE categories (
---     id            SERIAL PRIMARY KEY,
---     name          VARCHAR(100) NOT NULL UNIQUE,
---     slug          VARCHAR(100) NOT NULL UNIQUE,
---     image_url     VARCHAR(500),
---     display_order INTEGER NOT NULL DEFAULT 0,
---     is_active     BOOLEAN NOT NULL DEFAULT TRUE,
---     created_at    TIMESTAMP NOT NULL DEFAULT NOW()
---     updated_at    TIMESTAMP NOT NULL DEFAULT NOW()
--- );
+CREATE TABLE sessions (
+    token  TEXT PRIMARY KEY,
+    data   BYTEA NOT NULL,
+    expiry TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX sessions_expiry_idx ON sessions (expiry);
 
 CREATE TABLE categories (
     id            SERIAL PRIMARY KEY,
@@ -60,7 +58,7 @@ CREATE TABLE product_images (
 );
 
 CREATE TABLE product_stats (
-    product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+    product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
     day        DATE NOT NULL,
     views      INTEGER NOT NULL DEFAULT 0,
     carts      INTEGER NOT NULL DEFAULT 0,
@@ -100,6 +98,9 @@ CREATE TABLE orders (
     delivery_district VARCHAR(100) NOT NULL,
     delivery_phone    VARCHAR(20) NOT NULL,
     delivered_confirmed_by VARCHAR(20),  
+    transaction_uuid  VARCHAR(100) UNIQUE,
+    transaction_code  VARCHAR(100),
+    from_cart         BOOLEAN NOT NULL DEFAULT FALSE,
     created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at        TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -118,8 +119,10 @@ CREATE TABLE product_reviews (
     customer_id INTEGER NOT NULL REFERENCES users(id),
     rating      INTEGER NOT NULL,
     review_text TEXT,
+    is_hidden   BOOLEAN NOT NULL DEFAULT FALSE,
     created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
+    updated_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+    CONSTRAINT product_reviews_customer_product_unique UNIQUE (customer_id, product_id)
 );
 
 -- CREATE TABLE review_replies (
@@ -128,15 +131,6 @@ CREATE TABLE product_reviews (
 --     user_id     INTEGER NOT NULL REFERENCES users(id),
 --     reply_text  TEXT NOT NULL,
 --     created_at  TIMESTAMP NOT NULL DEFAULT NOW()
--- );
-
--- CREATE TABLE conversations (
---     id          SERIAL PRIMARY KEY,
---     customer_id INTEGER NOT NULL REFERENCES users(id),
---     owner_id    INTEGER NOT NULL REFERENCES users(id),
---     product_id  INTEGER REFERENCES products(id),
---     created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
---     updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
 -- );
 
 CREATE TABLE conversations (

@@ -212,14 +212,14 @@ SELECT
         (
             SELECT AVG(pr.rating)
             FROM product_reviews pr
-            WHERE pr.product_id = p.id
+            WHERE pr.product_id = p.id AND pr.is_hidden = FALSE
         ),
         0
     )::float8 AS rating,
     (
         SELECT COUNT(*)
         FROM product_reviews pr
-        WHERE pr.product_id = p.id
+        WHERE pr.product_id = p.id AND pr.is_hidden = FALSE
     )::int AS review_count,
     COALESCE(
         (
@@ -273,8 +273,8 @@ WITH cards AS (
     SELECT p.id, p.name, c.name AS category_name, p.category_id, p.created_at,
         p.base_price::float8 AS price,
         COALESCE((SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.sort_order ASC LIMIT 1), '') AS cover_image,
-        COALESCE((SELECT AVG(pr.rating) FROM product_reviews pr WHERE pr.product_id = p.id), 0)::float8 AS rating,
-        (SELECT COUNT(*) FROM product_reviews pr WHERE pr.product_id = p.id)::int AS review_count,
+        COALESCE((SELECT AVG(pr.rating) FROM product_reviews pr WHERE pr.product_id = p.id AND pr.is_hidden = FALSE), 0)::float8 AS rating,
+        (SELECT COUNT(*) FROM product_reviews pr WHERE pr.product_id = p.id AND pr.is_hidden = FALSE)::int AS review_count,
         COALESCE((SELECT SUM(oi.quantity) FROM order_items oi JOIN product_variants pv ON pv.id = oi.variant_id JOIN orders o ON o.id = oi.order_id WHERE pv.product_id = p.id AND o.status <> 'cancelled'), 0)::int AS sold,
         COALESCE((SELECT SUM(pv.stock) FROM product_variants pv WHERE pv.product_id = p.id), 0)::int AS stock,
         LOWER(
@@ -333,12 +333,12 @@ SELECT
     COALESCE((
         SELECT AVG(pr.rating)
         FROM product_reviews pr
-        WHERE pr.product_id = p.id
+        WHERE pr.product_id = p.id AND pr.is_hidden = FALSE
     ), 0)::float8 AS rating,
     (
         SELECT COUNT(*)
         FROM product_reviews pr
-        WHERE pr.product_id = p.id
+        WHERE pr.product_id = p.id AND pr.is_hidden = FALSE
     )::int AS review_count,
     COALESCE((
         SELECT SUM(pv.stock)
@@ -356,17 +356,58 @@ SELECT
     pr.id,
     pr.rating,
     COALESCE(pr.review_text, '')::text AS review_text,
+    pr.is_hidden,
     pr.created_at,
+    pr.updated_at,
+    (pr.updated_at > pr.created_at) AS is_edited,
     u.name AS customer_name
 FROM product_reviews pr
 JOIN users u ON u.id = pr.customer_id
-WHERE pr.product_id = $1
-ORDER BY pr.created_at DESC;
+WHERE pr.product_id = sqlc.arg('product_id')::int
+  AND (sqlc.arg('include_hidden')::bool OR pr.is_hidden = FALSE)
+ORDER BY pr.is_hidden ASC, pr.created_at DESC;
 
--- name: CreateProductReview :one
+-- name: GetProductReview :one
+SELECT
+    id,
+    product_id,
+    customer_id,
+    rating,
+    COALESCE(review_text, '')::text AS review_text,
+    is_hidden,
+    created_at,
+    updated_at
+FROM product_reviews
+WHERE id = $1;
+
+-- name: SetProductReviewHidden :exec
+UPDATE product_reviews
+SET is_hidden = $2
+WHERE id = $1;
+
+-- name: GetCustomerProductReview :one
+SELECT
+    id,
+    product_id,
+    customer_id,
+    rating,
+    COALESCE(review_text, '')::text AS review_text,
+    is_hidden,
+    created_at,
+    updated_at
+FROM product_reviews
+WHERE customer_id = $1
+  AND product_id = $2;
+
+-- name: SaveProductReview :one
 INSERT INTO product_reviews (product_id, customer_id, rating, review_text)
 VALUES ($1, $2, $3, $4)
-RETURNING id, product_id, customer_id, rating, review_text, created_at, updated_at;
+ON CONFLICT (customer_id, product_id)
+DO UPDATE SET
+    rating = EXCLUDED.rating,
+    review_text = EXCLUDED.review_text,
+    updated_at = NOW()
+RETURNING id, product_id, customer_id, rating, review_text, is_hidden, created_at, updated_at;
 
 -- name: HasDeliveredProduct :one
 SELECT EXISTS (
